@@ -18,6 +18,9 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
+  // Required so og:image/twitter:image resolve to absolute production URLs
+  // (without it Next falls back to localhost and social cards silently break).
+  metadataBase: new URL("https://scratchml.fly.dev"),
   title: "ScratchML — Teach a computer to see, by snapping blocks",
   description:
     "A Scratch-style playground where kids and beginners build a real machine-learning model by dragging blocks. Show your camera a few examples, train the brain, and watch it learn — all in your browser.",
