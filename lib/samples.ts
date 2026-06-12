@@ -2,31 +2,50 @@
 //
 // Embeddings are big Float32Arrays — we deliberately keep them OUT of the
 // zustand store so React never tries to diff/serialize them. The UI only
-// tracks lightweight counts + a few thumbnail data-URLs.
+// tracks lightweight counts + thumbnail data-URLs keyed by sample id, so a
+// single example can be deleted from both stores consistently.
 
-const embeddings = new Map<string, Float32Array[]>();
+export interface StoredSample {
+  id: string;
+  embedding: Float32Array;
+}
 
-export function addEmbedding(classId: string, e: Float32Array): number {
-  const arr = embeddings.get(classId) ?? [];
-  arr.push(e);
-  embeddings.set(classId, arr);
-  return arr.length;
+const samplesByClass = new Map<string, StoredSample[]>();
+let seq = 0;
+
+export function addEmbedding(
+  classId: string,
+  embedding: Float32Array,
+): { sampleId: string; count: number } {
+  const arr = samplesByClass.get(classId) ?? [];
+  const sampleId = `s_${++seq}`;
+  arr.push({ id: sampleId, embedding });
+  samplesByClass.set(classId, arr);
+  return { sampleId, count: arr.length };
+}
+
+/** Delete one example by id. Returns the new count. */
+export function removeSample(classId: string, sampleId: string): number {
+  const arr = samplesByClass.get(classId) ?? [];
+  const next = arr.filter((s) => s.id !== sampleId);
+  samplesByClass.set(classId, next);
+  return next.length;
 }
 
 export function countFor(classId: string): number {
-  return embeddings.get(classId)?.length ?? 0;
+  return samplesByClass.get(classId)?.length ?? 0;
 }
 
 export function clearClass(classId: string): void {
-  embeddings.set(classId, []);
+  samplesByClass.set(classId, []);
 }
 
 export function dropClass(classId: string): void {
-  embeddings.delete(classId);
+  samplesByClass.delete(classId);
 }
 
 export function clearAll(): void {
-  embeddings.clear();
+  samplesByClass.clear();
 }
 
 export interface FlatSample {
@@ -38,8 +57,8 @@ export interface FlatSample {
 export function flatten(classIdsInOrder: string[]): FlatSample[] {
   const out: FlatSample[] = [];
   classIdsInOrder.forEach((id, classIndex) => {
-    const arr = embeddings.get(id) ?? [];
-    for (const embedding of arr) out.push({ classIndex, embedding });
+    const arr = samplesByClass.get(id) ?? [];
+    for (const { embedding } of arr) out.push({ classIndex, embedding });
   });
   return out;
 }

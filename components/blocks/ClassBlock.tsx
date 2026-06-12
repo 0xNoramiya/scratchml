@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { BlockShell } from "./BlockShell";
 import { useStudio, sourceOf } from "@/lib/store";
 import { useCapture } from "../CaptureContext";
@@ -16,6 +16,7 @@ export function ClassBlock({ blockId, handleProps, onRemove }: Props) {
   const renameClass = useStudio((s) => s.renameClass);
   const cycleEmoji = useStudio((s) => s.cycleEmoji);
   const clearSamples = useStudio((s) => s.clearClassSamples);
+  const removeSample = useStudio((s) => s.removeSample);
   const activeCaptureId = useStudio((s) => s.activeCaptureId);
   const setActiveCapture = useStudio((s) => s.setActiveCapture);
   const phase = useStudio((s) => s.phase);
@@ -26,6 +27,14 @@ export function ClassBlock({ blockId, handleProps, onRemove }: Props) {
 
   const holding = useRef(false);
   const timer = useRef<number | undefined>(undefined);
+  const stripRef = useRef<HTMLDivElement | null>(null);
+  const thumbCount = meta?.thumbs.length ?? 0;
+
+  // keep the newest example in view as the strip fills up
+  useEffect(() => {
+    const el = stripRef.current;
+    if (el) el.scrollLeft = el.scrollWidth;
+  }, [thumbCount]);
 
   if (!meta) return null;
   const capturing = activeCaptureId === blockId;
@@ -102,22 +111,37 @@ export function ClassBlock({ blockId, handleProps, onRemove }: Props) {
         </span>
       </div>
 
-      {/* Thumbnails + capture controls */}
+      {/* Thumbnails (each deletable) + clear-all */}
       <div className="mt-2 flex items-center gap-2">
-        <div className="flex h-10 flex-1 items-center gap-1 overflow-hidden rounded-lg bg-black/12 px-1.5">
+        <div
+          ref={stripRef}
+          className="flex h-12 min-w-0 flex-1 items-center gap-1.5 overflow-x-auto rounded-lg bg-black/12 px-1.5 nice-scroll"
+        >
           {meta.thumbs.length === 0 ? (
-            <span className="px-1 text-[11px] font-bold text-white/80">
+            <span className="whitespace-nowrap px-1 text-[11px] font-bold text-white/80">
               {sketchMode ? "no examples yet — draw, then tap add" : "no examples yet — hold the button →"}
             </span>
           ) : (
-            meta.thumbs.map((src, i) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={i}
-                src={src}
-                alt=""
-                className="h-8 w-8 shrink-0 rounded-md object-cover ring-1 ring-white/60"
-              />
+            meta.thumbs.map((t) => (
+              <div key={t.id} className="relative shrink-0 py-1">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={t.src}
+                  alt={`example of ${meta.name || "this Thing"}`}
+                  className="h-8 w-8 rounded-md object-cover ring-1 ring-white/60"
+                />
+                {!locked && (
+                  <button
+                    type="button"
+                    aria-label="Delete this example"
+                    title="Delete this example"
+                    onClick={() => removeSample(blockId, t.id)}
+                    className="absolute -right-1 top-0 grid h-4 w-4 place-items-center rounded-full bg-[color:var(--color-bad)] text-[9px] font-extrabold leading-none text-white shadow ring-1 ring-white/80 transition-transform hover:scale-125"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
             ))
           )}
         </div>
@@ -126,8 +150,9 @@ export function ClassBlock({ blockId, handleProps, onRemove }: Props) {
           <button
             type="button"
             onClick={() => clearSamples(blockId)}
-            title="Clear examples"
-            className="grid h-10 w-9 shrink-0 place-items-center rounded-lg bg-black/12 text-white/85 transition-colors hover:bg-black/25"
+            aria-label="Clear all examples"
+            title="Clear all examples"
+            className="grid h-12 w-9 shrink-0 place-items-center rounded-lg bg-black/12 text-white/85 transition-colors hover:bg-black/25"
           >
             🗑
           </button>

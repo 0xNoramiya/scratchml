@@ -16,6 +16,7 @@ interface StageProps {
   onUseSketch: () => void;
   onRun: () => void;
   onStop: () => void;
+  onRetryBrain: () => void;
   hint: StageHint | null;
   /** Rendered instead of the camera when the recipe uses the sketchpad. */
   sketchpad: ReactNode;
@@ -27,6 +28,7 @@ export function Stage({
   onUseSketch,
   onRun,
   onStop,
+  onRetryBrain,
   hint,
   sketchpad,
 }: StageProps) {
@@ -141,7 +143,7 @@ export function Stage({
         )}
 
         {phase === "build" && (
-          <GoButton ready={modelStatus === "ready"} onClick={onRun} />
+          <GoButton status={modelStatus} onClick={onRun} onRetry={onRetryBrain} />
         )}
         {phase === "training" && (
           <button
@@ -199,7 +201,27 @@ function GuessBadge({
   );
 }
 
-function GoButton({ ready, onClick }: { ready: boolean; onClick: () => void }) {
+function GoButton({
+  status,
+  onClick,
+  onRetry,
+}: {
+  status: "idle" | "loading" | "ready" | "error";
+  onClick: () => void;
+  onRetry: () => void;
+}) {
+  if (status === "error") {
+    return (
+      <button
+        type="button"
+        onClick={onRetry}
+        className="w-full rounded-2xl bg-[color:var(--color-bad)] px-4 py-3.5 font-display text-lg font-bold text-white ring-2 ring-[#d54848] shadow-[0_6px_0_0_#d54848] transition-transform hover:-translate-y-0.5 active:translate-y-1"
+      >
+        😵 Brain couldn&apos;t load — tap to retry
+      </button>
+    );
+  }
+  const ready = status === "ready";
   return (
     <button
       type="button"

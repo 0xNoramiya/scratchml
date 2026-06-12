@@ -57,13 +57,34 @@ async function drawSquare(page, box, cx, cy, half) {
 
   let failures = 0;
 
-  // ================= Scenario A: SKETCH PATH (no webcam) =================
+  // ================= Scenario L: LANDING PAGE =================
   {
     const { ctx, page, errors } = await newPage(browser);
     try {
       await page.goto(URL, { waitUntil: "domcontentloaded" });
-      await page.getByText(/Drawing demo: no camera needed/i).click({ timeout: 15000 });
-      log("A: sketch demo loaded");
+      await page.getByRole("heading", { name: /Teach a computer/i }).waitFor({ timeout: 15000 });
+      await shot(page, "L1-landing");
+      await page.getByRole("link", { name: /Start building/i }).click();
+      await page.waitForURL("**/studio", { timeout: 15000 });
+      // fresh context → onboarding modal should greet the visitor
+      await page.getByText(/Drawing demo: no camera needed/i).waitFor({ timeout: 15000 });
+      log("L: ✅ landing renders, CTA reaches the studio + onboarding");
+      log("L errors:", errors.length);
+      if (errors.length) { errors.slice(0, 8).forEach((e) => log("   " + e)); failures++; }
+    } catch (e) {
+      log("L FAILED:", e.message);
+      await shot(page, "L-failure");
+      failures++;
+    }
+    await ctx.close();
+  }
+
+  // ================= Scenario A: SKETCH PATH (no webcam) =================
+  {
+    const { ctx, page, errors } = await newPage(browser);
+    try {
+      await page.goto(URL + "/studio?demo=sketch", { waitUntil: "domcontentloaded" });
+      log("A: sketch demo loaded (deep link)");
       await page.getByRole("button", { name: /Train & Play/i }).waitFor({ timeout: 90000 });
       log("A: model ready");
       await shot(page, "A1-sketch-studio");
@@ -72,27 +93,54 @@ async function drawSquare(page, box, cx, cy, half) {
       const box = await pad.boundingBox();
       if (!box) throw new Error("no sketchpad box");
 
-      // 5 circles for class 1, 5 squares for class 2
-      for (let i = 0; i < 5; i++) {
-        await drawCircle(page, box, box.width / 2 + (i - 2) * 8, box.height / 2, 60 + i * 7);
+      // 6 circles for class 1 (then delete one), 5 squares for class 2
+      for (let i = 0; i < 6; i++) {
+        await drawCircle(page, box, box.width / 2 + (i - 2) * 8, box.height / 2, 56 + i * 6);
         await page.getByText(/add this drawing/i).nth(0).click();
         await page.waitForTimeout(250);
       }
-      log("A: added 5 circles");
+      log("A: added 6 circles");
+
+      // --- per-image delete: remove one example, count should drop to 5
+      await page.getByRole("button", { name: /Delete this example/i }).first().click();
+      await page.waitForTimeout(300);
+      const counts = await page
+        .locator("span.shrink-0.rounded-full")
+        .filter({ hasText: /^\d+$/ })
+        .allInnerTexts();
+      if (counts[0] === "5") log("A: ✅ per-image delete works (6 → 5)");
+      else { log(`A: ❌ per-image delete failed, count chip: ${JSON.stringify(counts)}`); failures++; }
+
+      // --- draw squares in a COLOR (red crayon) — exercises the crayon box
+      await page.getByRole("button", { name: /Red crayon/i }).click();
       for (let i = 0; i < 5; i++) {
         await drawSquare(page, box, box.width / 2 + (i - 2) * 8, box.height / 2, 45 + i * 7);
         await page.getByText(/add this drawing/i).nth(1).click();
         await page.waitForTimeout(250);
       }
-      log("A: added 5 squares");
+      log("A: added 5 red squares");
+
+      // --- undo: draw a stray scribble, undo it, pad should report empty again
+      await drawCircle(page, box, box.width / 4, box.height / 4, 20);
+      await page.getByRole("button", { name: /^Undo$/i }).click();
+      await page.waitForTimeout(200);
+      const addBtnText = await page.getByText(/draw on the pad first|add this drawing/i).first().innerText();
+      if (/draw on the pad first/i.test(addBtnText)) log("A: ✅ undo restores a clean pad");
+      else { log("A: ❌ undo did not clean the pad: " + addBtnText); failures++; }
       await shot(page, "A2-samples");
 
       await page.getByRole("button", { name: /Train & Play/i }).click();
       await page.getByRole("button", { name: /Teach me more/i }).waitFor({ timeout: 90000 });
       log("A: trained, live");
+      // layout shifts in live (bars + toast) — the cached pad box is stale
+      await page.waitForTimeout(600);
+      const liveBox = await pad.boundingBox();
+      if (!liveBox) throw new Error("no live sketchpad box");
 
-      // draw a NEW circle and see what it guesses
-      await drawCircle(page, box, box.width / 2, box.height / 2, 72);
+      // draw a NEW circle and see what it guesses — back to Ink first, since
+      // the squares were trained in red (the model legitimately learns color!)
+      await page.getByRole("button", { name: "Ink crayon", exact: true }).click();
+      await drawCircle(page, liveBox, liveBox.width / 2, liveBox.height / 2, 72);
       await page.waitForTimeout(2600); // let EMA settle
       await shot(page, "A3-live-guess");
       const badge = await page.locator(".wiggle").first().innerText().catch(() => "");
@@ -100,10 +148,11 @@ async function drawSquare(page, box, cx, cy, half) {
       if (/circle/i.test(badge)) log("A: ✅ correctly recognized the drawn circle");
       else { log("A: ❌ did not recognize circle"); failures++; }
 
-      // and a square
-      await page.getByText(/clear/i).first().click().catch(() => {});
+      // and a red square (clear pad via toolbar first, match training color)
+      await page.getByRole("button", { name: /Clear the pad/i }).click();
+      await page.getByRole("button", { name: /Red crayon/i }).click();
       await page.waitForTimeout(300);
-      await drawSquare(page, box, box.width / 2, box.height / 2, 60);
+      await drawSquare(page, liveBox, liveBox.width / 2, liveBox.height / 2, 60);
       await page.waitForTimeout(2600);
       const badge2 = await page.locator(".wiggle").first().innerText().catch(() => "");
       log("A: badge2:", JSON.stringify(badge2.replace(/\n/g, " ")));
@@ -126,9 +175,9 @@ async function drawSquare(page, box, cx, cy, half) {
   {
     const { ctx, page, errors } = await newPage(browser);
     try {
-      await page.goto(URL, { waitUntil: "domcontentloaded" });
-      await page.getByText(/Camera demo: Happy vs Sad/i).click({ timeout: 15000 });
+      await page.goto(URL + "/studio?demo=camera", { waitUntil: "domcontentloaded" });
       const turnOn = page.getByRole("button", { name: /Turn on camera/i });
+      await turnOn.first().waitFor({ timeout: 30000 });
       if (await turnOn.count()) await turnOn.first().click();
       await page.getByRole("button", { name: /Train & Play/i }).waitFor({ timeout: 90000 });
       log("B: camera demo ready");
@@ -170,8 +219,7 @@ async function drawSquare(page, box, cx, cy, half) {
     const errors = [];
     page.on("pageerror", (e) => errors.push(e.message));
     try {
-      await page.goto(URL, { waitUntil: "domcontentloaded" });
-      await page.getByText(/Drawing demo: no camera needed/i).click({ timeout: 15000 });
+      await page.goto(URL + "/studio?demo=sketch", { waitUntil: "domcontentloaded" });
       await page.waitForTimeout(1500);
       await shot(page, "C1-mobile");
       const hScroll = await page.evaluate(

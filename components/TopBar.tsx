@@ -1,15 +1,21 @@
 "use client";
 
+import Link from "next/link";
+
 interface TopBarProps {
-  onLoadExample: () => void;
+  onShowDemos: () => void;
   onReset: () => void;
   onHelp: () => void;
 }
 
-export function TopBar({ onLoadExample, onReset, onHelp }: TopBarProps) {
+export function TopBar({ onShowDemos, onReset, onHelp }: TopBarProps) {
   return (
     <header className="z-10 flex items-center justify-between gap-3 border-b-2 border-line bg-card/80 px-4 py-2.5 backdrop-blur">
-      <div className="flex items-center gap-2.5">
+      <Link
+        href="/"
+        className="flex items-center gap-2.5 rounded-xl transition-transform hover:scale-[1.02]"
+        aria-label="ScratchML home"
+      >
         <LogoMark />
         <div className="leading-none">
           <div className="font-display text-xl font-bold text-ink">
@@ -19,7 +25,7 @@ export function TopBar({ onLoadExample, onReset, onHelp }: TopBarProps) {
             teach a computer to see — by snapping blocks
           </div>
         </div>
-      </div>
+      </Link>
 
       <div className="flex items-center gap-1.5">
         <button
@@ -31,10 +37,10 @@ export function TopBar({ onLoadExample, onReset, onHelp }: TopBarProps) {
         </button>
         <button
           type="button"
-          onClick={onLoadExample}
+          onClick={onShowDemos}
           className="rounded-full bg-prd px-3.5 py-1.5 text-[13px] font-extrabold text-white ring-2 ring-prd-edge transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
         >
-          ✨ Example
+          ✨ Demos
         </button>
         <button
           type="button"

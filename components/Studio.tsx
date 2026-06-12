@@ -21,6 +21,7 @@ import { useStudio, classBlocks, sourceOf } from "@/lib/store";
 import * as samples from "@/lib/samples";
 import {
   loadFeatureExtractor,
+  retryLoad,
   captureEmbedding,
   trainHead,
   predict,
@@ -41,7 +42,14 @@ interface ActiveDrag {
 
 const ONBOARD_KEY = "sml_onboarded_v1";
 
-export default function Studio() {
+export type DemoKind = "camera" | "sketch";
+
+interface StudioProps {
+  /** Deep link from the landing page: jump straight into a demo recipe. */
+  initialDemo?: DemoKind | null;
+}
+
+export default function Studio({ initialDemo = null }: StudioProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const sketchRef = useRef<HTMLCanvasElement | null>(null);
   const thumbCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -77,16 +85,31 @@ export default function Studio() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  // ---- First load: MobileNet + onboarding (only if not seen before) ----
+  // ---- First load: MobileNet + onboarding / demo deep-link ----
   useEffect(() => {
-    if (!localStorage.getItem(ONBOARD_KEY)) setShowOnboarding(true);
+    if (initialDemo === "camera") {
+      localStorage.setItem(ONBOARD_KEY, "1");
+      loadExample();
+    } else if (initialDemo === "sketch") {
+      localStorage.setItem(ONBOARD_KEY, "1");
+      loadSketchExample();
+    } else if (!localStorage.getItem(ONBOARD_KEY)) {
+      setShowOnboarding(true);
+    }
     setModelStatus("loading");
     loadFeatureExtractor()
       .then(() => setModelStatus("ready"))
-      .catch(() => setModelStatus("idle"));
+      .catch(() => setModelStatus("error"));
     return () => stopCameraTracks();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const retryBrain = useCallback(() => {
+    setModelStatus("loading");
+    retryLoad()
+      .then(() => setModelStatus("ready"))
+      .catch(() => setModelStatus("error"));
+  }, [setModelStatus]);
 
   const dismissOnboarding = useCallback((then?: () => void) => {
     localStorage.setItem(ONBOARD_KEY, "1");
@@ -173,6 +196,12 @@ export default function Studio() {
     setSketchDirty(false);
   }, [setSketchDirty]);
 
+  // Stable identity matters: if this were an inline arrow, every Studio
+  // re-render would re-run SketchPad's effects mid-drawing.
+  const registerSketch = useCallback((c: HTMLCanvasElement | null) => {
+    sketchRef.current = c;
+  }, []);
+
   const captureSample = useCallback(
     async (classId: string) => {
       const state = useStudio.getState();
@@ -184,8 +213,8 @@ export default function Studio() {
           throw new Error("empty-sketch");
         }
         const emb = await captureEmbedding(c);
-        const count = samples.addEmbedding(classId, emb);
-        noteCapture(classId, grabThumb(c, false), count);
+        const { sampleId, count } = samples.addEmbedding(classId, emb);
+        noteCapture(classId, sampleId, grabThumb(c, false), count);
         clearSketch();
         flash("Got it! Now draw it again, a little different ✨", "ok");
         return;
@@ -193,8 +222,8 @@ export default function Studio() {
       const v = videoRef.current;
       if (!v) return;
       const emb = await captureEmbedding(v); // throws if frame not ready
-      const count = samples.addEmbedding(classId, emb);
-      noteCapture(classId, grabThumb(v, true), count);
+      const { sampleId, count } = samples.addEmbedding(classId, emb);
+      noteCapture(classId, sampleId, grabThumb(v, true), count);
     },
     [clearSketch, flash, grabThumb, noteCapture],
   );
@@ -353,9 +382,9 @@ export default function Studio() {
         />
       </div>
 
-      <div className="relative z-[1] flex h-dvh flex-col">
+      <div className="relative z-[1] flex h-dvh flex-col overflow-hidden">
         <TopBar
-          onLoadExample={loadExample}
+          onShowDemos={() => setShowOnboarding(true)}
           onReset={handleReset}
           onHelp={() => setShowHelp(true)}
         />
@@ -376,10 +405,11 @@ export default function Studio() {
               onUseSketch={useSketchInstead}
               onRun={run}
               onStop={stop}
+              onRetryBrain={retryBrain}
               hint={hint}
               sketchpad={
                 source === "sketchpad" ? (
-                  <SketchPad registerCanvas={(c) => (sketchRef.current = c)} />
+                  <SketchPad registerCanvas={registerSketch} />
                 ) : null
               }
             />

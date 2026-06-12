@@ -18,7 +18,10 @@ export function Mascot() {
   let mood: Mood = "idle";
   let line = "Snap some blocks together to start!";
 
-  if (phase === "build" && modelStatus !== "ready") {
+  if (phase === "build" && modelStatus === "error") {
+    mood = "hmm";
+    line = "I couldn't wake my brain up 😵 — check your internet, then tap retry!";
+  } else if (phase === "build" && modelStatus !== "ready") {
     mood = "boot";
     line = "Warming up my brain… one sec! 🔌";
   } else if (phase === "training") {

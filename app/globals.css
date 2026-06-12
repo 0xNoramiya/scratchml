@@ -50,7 +50,8 @@ body {
   color: var(--color-ink);
   font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  overflow: hidden; /* app shell manages its own scroll regions */
+  /* the landing page scrolls normally; the studio shell (h-dvh +
+     overflow-hidden) manages its own scroll regions */
 }
 
 /* Atmosphere: soft floating color blobs behind everything */

@@ -28,6 +28,7 @@ const MOBILENET_CDN_CFG = { version: 2 as const, alpha: 0.5 as const };
 type FeatureExtractor = mobilenet.MobileNet;
 
 let extractorPromise: Promise<FeatureExtractor> | null = null;
+let extractorReady = false;
 let head: tf.LayersModel | null = null;
 
 export type VideoLike = HTMLVideoElement | HTMLCanvasElement;
@@ -51,10 +52,17 @@ export function loadFeatureExtractor(): Promise<FeatureExtractor> {
           const t = net.infer(c, true) as tf.Tensor;
           t.dispose();
         }
+        extractorReady = true;
         return net;
       });
   }
   return extractorPromise;
+}
+
+/** Forget a failed load attempt and try again (offline → online, etc.). */
+export function retryLoad(): Promise<FeatureExtractor> {
+  if (!extractorReady) extractorPromise = null;
+  return loadFeatureExtractor();
 }
 
 export function isExtractorLoading(): boolean {
@@ -141,7 +149,7 @@ export async function trainHead(opts: TrainOptions): Promise<void> {
 
 /** Live inference. Returns probabilities aligned to class order, or null. */
 export async function predict(input: VideoLike): Promise<number[] | null> {
-  if (!head || !extractorPromise) return null;
+  if (!head || !extractorPromise || !extractorReady) return null;
   if (!frameOk(input)) return null;
   const net = await extractorPromise;
   const emb = net.infer(input, true) as tf.Tensor;

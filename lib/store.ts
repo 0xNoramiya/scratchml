@@ -11,17 +11,23 @@ import {
 import * as samples from "./samples";
 import { resetModel } from "./mlEngine";
 
+export interface ClassThumb {
+  /** sample id in lib/samples — deleting the thumb deletes the embedding */
+  id: string;
+  src: string;
+}
+
 export interface ClassMeta {
   name: string;
   emoji: string;
   color: string;
   sampleCount: number;
-  thumbs: string[]; // recent thumbnail data-URLs (most recent first), capped
+  thumbs: ClassThumb[]; // every captured example, oldest → newest
 }
 
 export type Phase = "build" | "training" | "live";
 export type CameraState = "off" | "starting" | "on" | "denied" | "error";
-export type ModelStatus = "idle" | "loading" | "ready";
+export type ModelStatus = "idle" | "loading" | "ready" | "error";
 
 interface TrainingProgress {
   epoch: number;
@@ -52,7 +58,8 @@ interface StudioState {
   reorder: (next: ScriptBlock[]) => void;
   renameClass: (id: string, name: string) => void;
   cycleEmoji: (id: string) => void;
-  noteCapture: (id: string, thumb: string, count: number) => void;
+  noteCapture: (id: string, sampleId: string, thumb: string, count: number) => void;
+  removeSample: (id: string, sampleId: string) => void;
   clearClassSamples: (id: string) => void;
   setEpochs: (n: number) => void;
 
@@ -212,13 +219,30 @@ export const useStudio = create<StudioState>((set, get) => ({
       return { classMeta: { ...state.classMeta, [id]: { ...cur, emoji } } };
     }),
 
-  noteCapture: (id, thumb, count) =>
+  noteCapture: (id, sampleId, thumb, count) =>
     set((state) => {
       const cur = state.classMeta[id];
       if (!cur) return state;
-      const thumbs = [thumb, ...cur.thumbs].slice(0, 8);
+      const thumbs = [...cur.thumbs, { id: sampleId, src: thumb }];
       return {
         classMeta: { ...state.classMeta, [id]: { ...cur, sampleCount: count, thumbs } },
+      };
+    }),
+
+  removeSample: (id, sampleId) =>
+    set((state) => {
+      const cur = state.classMeta[id];
+      if (!cur) return state;
+      const count = samples.removeSample(id, sampleId);
+      return {
+        classMeta: {
+          ...state.classMeta,
+          [id]: {
+            ...cur,
+            sampleCount: count,
+            thumbs: cur.thumbs.filter((t) => t.id !== sampleId),
+          },
+        },
       };
     }),
 
