@@ -2,8 +2,13 @@
 
 /* ============================================================
    ScratchML — "Toy-Lab" design system
+
+   `static` matters: block colors are often referenced ONLY via dynamic
+   inline styles (tokenVars builds `var(--color-${token})` at runtime),
+   which Tailwind's scanner can't see — without `static` it tree-shakes
+   those variables away and the blocks silently render transparent.
    ============================================================ */
-@theme {
+@theme static {
   /* Surfaces */
   --color-paper: #fff6e9;
   --color-paper-2: #fdeecf;
