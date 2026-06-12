@@ -68,6 +68,18 @@ async function drawSquare(page, box, cx, cy, half) {
       await page.waitForURL("**/studio", { timeout: 15000 });
       await page.getByText(/Drawing demo: no camera needed/i).waitFor({ timeout: 15000 });
       log("L: ✅ landing renders, CTA reaches the studio + onboarding");
+
+      // regression: picking a demo AFTER the model loaded must not reset
+      // modelStatus to idle and strand the GO button on "loading brain…"
+      await page.getByRole("button", { name: /Train & Play/i }).waitFor({ timeout: 90000 });
+      await page.getByText(/Drawing demo: no camera needed/i).click();
+      await page.waitForTimeout(2500);
+      const goText = await page
+        .getByRole("button", { name: /Train & Play|loading brain/i })
+        .first()
+        .innerText();
+      if (/Train & Play/i.test(goText)) log("L: ✅ demo picked after model-ready keeps GO ready");
+      else { log("L: ❌ GO stuck after picking demo: " + goText); failures++; }
       log("L errors:", errors.length);
       if (errors.length) { errors.slice(0, 8).forEach((e) => log("   " + e)); failures++; }
     } catch (e) {

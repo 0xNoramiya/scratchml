@@ -278,6 +278,9 @@ export const useStudio = create<StudioState>((set, get) => ({
       const prd: ScriptBlock = { id: makeId("predict"), type: "predict" };
       return {
         ...initialState(),
+        // the feature extractor is app-global — swapping recipes must never
+        // reset its status or the GO button waits for a load that won't re-run
+        modelStatus: state.modelStatus,
         script: [cam, c1, c2, trn, prd],
         classMeta: {
           [c1.id]: { ...nextClassMeta("Happy"), emoji: "😀" },
@@ -299,6 +302,7 @@ export const useStudio = create<StudioState>((set, get) => ({
       const prd: ScriptBlock = { id: makeId("predict"), type: "predict" };
       return {
         ...initialState(),
+        modelStatus: state.modelStatus,
         script: [pad, c1, c2, trn, prd],
         classMeta: {
           [c1.id]: { ...nextClassMeta("Circle"), emoji: "⭕" },
@@ -312,7 +316,7 @@ export const useStudio = create<StudioState>((set, get) => ({
     resetModel();
     colorCounter = 0;
     emojiCounter = 0;
-    set({ ...initialState() });
+    set({ ...initialState(), modelStatus: get().modelStatus });
   },
 }));
 
