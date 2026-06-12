@@ -42,3 +42,6 @@ next-env.d.ts
 
 # demo video production files (local only)
 demo-video/
+
+# Devpost submission draft (local only)
+DEVPOST.md
