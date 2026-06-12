@@ -115,7 +115,6 @@ export async function trainHead(opts: TrainOptions): Promise<void> {
   const xs = tf.tensor2d(xsBuf, [samples.length, dim]);
   const ys = tf.tidy(() => tf.oneHot(tf.tensor1d(labels, "int32"), numClasses));
 
-  head?.dispose();
   const model = tf.sequential();
   model.add(tf.layers.dense({ inputShape: [dim], units: 100, activation: "relu" }));
   model.add(tf.layers.dropout({ rate: 0.25 }));
@@ -140,7 +139,15 @@ export async function trainHead(opts: TrainOptions): Promise<void> {
         },
       },
     });
+    // Only swap head after a successful fit so a failed training attempt
+    // never leaves head pointing at a disposed model or leaks the new one.
+    head?.dispose();
     head = model;
+  } catch (e) {
+    // Dispose the newly-built model to avoid a WebGL tensor leak; leave the
+    // existing head intact so hasTrainedModel() stays consistent.
+    model.dispose();
+    throw e;
   } finally {
     xs.dispose();
     ys.dispose();
@@ -152,12 +159,16 @@ export async function predict(input: VideoLike): Promise<number[] | null> {
   if (!head || !extractorPromise || !extractorReady) return null;
   if (!frameOk(input)) return null;
   const net = await extractorPromise;
-  const emb = net.infer(input, true) as tf.Tensor;
-  const out = head.predict(emb) as tf.Tensor;
-  const probs = Array.from(out.dataSync());
-  emb.dispose();
-  out.dispose();
-  return probs;
+  let emb: tf.Tensor | null = null;
+  let out: tf.Tensor | null = null;
+  try {
+    emb = net.infer(input, true) as tf.Tensor;
+    out = head.predict(emb) as tf.Tensor;
+    return Array.from(out.dataSync());
+  } finally {
+    emb?.dispose();
+    out?.dispose();
+  }
 }
 
 export function resetModel(): void {

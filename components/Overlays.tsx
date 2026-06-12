@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+
 const STEPS = [
   { emoji: "✨", title: "Show", text: "Snap camera examples — or draw them on the sketchpad." },
   { emoji: "🧠", title: "Train", text: "Press GO. The computer studies your pictures in seconds." },
@@ -15,13 +17,25 @@ export function Onboarding({
   onSketchExample: () => void;
   onBlank: () => void;
 }) {
+  // Escape skips onboarding into a blank canvas (there's no explicit close X).
+  const panelRef = useDialog<HTMLDivElement>(onBlank);
   return (
-    <Backdrop>
-      <div className="pop-in w-full max-w-lg rounded-3xl bg-card p-6 ring-2 ring-line shadow-2xl sm:p-8">
+    <Backdrop onClose={onBlank}>
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="onboarding-title"
+        tabIndex={-1}
+        className="pop-in w-full max-w-lg rounded-3xl bg-card p-6 ring-2 ring-line shadow-2xl outline-none sm:p-8"
+      >
         <div className="mb-1 flex justify-center gap-1 text-3xl">
           <span className="bob">🤖</span>
         </div>
-        <h1 className="text-center font-display text-3xl font-bold leading-tight text-ink sm:text-4xl">
+        <h1
+          id="onboarding-title"
+          className="text-center font-display text-3xl font-bold leading-tight text-ink sm:text-4xl"
+        >
           Teach a computer to <span className="text-prd">see</span> 👀
         </h1>
         <p className="mx-auto mt-2 max-w-sm text-center text-[14px] font-bold text-ink-soft">
@@ -71,12 +85,28 @@ export function Onboarding({
   );
 }
 
-export function HelpModal({ onClose }: { onClose: () => void }) {
+export function HelpModal({
+  source = null,
+  onClose,
+}: {
+  source?: "camera" | "sketchpad" | null;
+  onClose: () => void;
+}) {
+  const panelRef = useDialog<HTMLDivElement>(onClose);
   return (
     <Backdrop onClose={onClose}>
-      <div className="pop-in w-full max-w-md rounded-3xl bg-card p-6 ring-2 ring-line shadow-2xl">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="help-title"
+        tabIndex={-1}
+        className="pop-in w-full max-w-md rounded-3xl bg-card p-6 ring-2 ring-line shadow-2xl outline-none"
+      >
         <div className="flex items-start justify-between">
-          <h2 className="font-display text-2xl font-bold text-ink">How ScratchML works</h2>
+          <h2 id="help-title" className="font-display text-2xl font-bold text-ink">
+            How ScratchML works
+          </h2>
           <button
             type="button"
             onClick={onClose}
@@ -101,8 +131,9 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
             called MobileNet. This is called <b>transfer learning</b>.
           </Item>
           <Item n="4" color="var(--color-prd)" title="Guess It!">
-            Show the camera something new and the model guesses which Thing it is — with a confidence
-            score for each.
+            {source === "sketchpad"
+              ? "Draw one of your Things on the pad — watch the confidence bars update live!"
+              : "Show the camera something new and the model guesses which Thing it is — with a confidence score for each."}
           </Item>
         </ol>
 
@@ -148,6 +179,60 @@ function Item({
       </div>
     </li>
   );
+}
+
+/**
+ * Modal plumbing shared by both dialogs: move focus into the panel on open,
+ * trap Tab inside it, dismiss on Escape, and restore focus to the trigger on
+ * close. Returns a ref to attach to the dialog panel element.
+ */
+function useDialog<T extends HTMLElement>(onClose: () => void) {
+  const ref = useRef<T | null>(null);
+  useEffect(() => {
+    const panel = ref.current;
+    const prevFocus = document.activeElement as HTMLElement | null;
+    const focusables = () =>
+      Array.from(
+        panel?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      ).filter((el) => el.offsetParent !== null || el === panel);
+
+    // Move focus into the dialog on open.
+    (focusables()[0] ?? panel)?.focus();
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const items = focusables();
+      if (items.length === 0) {
+        e.preventDefault();
+        panel?.focus();
+        return;
+      }
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || active === panel)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown, true);
+      prevFocus?.focus?.();
+    };
+  }, [onClose]);
+  return ref;
 }
 
 function Backdrop({

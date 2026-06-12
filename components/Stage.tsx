@@ -49,7 +49,7 @@ export function Stage({
   const showGuess = live && topMeta && conf > 0.6;
 
   return (
-    <aside className="order-first flex w-full shrink-0 flex-col gap-3 bg-white/55 px-4 py-4 ring-1 ring-line backdrop-blur-sm nice-scroll lg:order-none lg:w-[360px] lg:overflow-y-auto">
+    <aside className="order-first flex w-full shrink-0 flex-col gap-3 bg-white/55 px-4 py-4 ring-1 ring-line backdrop-blur-sm nice-scroll max-h-[45dvh] overflow-y-auto lg:order-none lg:max-h-none lg:w-[360px] lg:overflow-y-auto">
       <Mascot />
 
       {/* Eyes: sketchpad or camera */}

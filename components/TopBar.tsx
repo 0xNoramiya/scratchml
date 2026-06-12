@@ -31,21 +31,21 @@ export function TopBar({ onShowDemos, onReset, onHelp }: TopBarProps) {
         <button
           type="button"
           onClick={onHelp}
-          className="rounded-full px-3 py-1.5 text-[13px] font-extrabold text-ink-soft transition-colors hover:bg-paper-2"
+          className="min-h-[40px] rounded-full px-3 py-2 text-[13px] font-extrabold text-ink-soft transition-colors hover:bg-paper-2"
         >
           ❓ How
         </button>
         <button
           type="button"
           onClick={onShowDemos}
-          className="rounded-full bg-prd px-3.5 py-1.5 text-[13px] font-extrabold text-white ring-2 ring-prd-edge transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
+          className="min-h-[40px] rounded-full bg-prd px-3.5 py-2 text-[13px] font-extrabold text-white ring-2 ring-prd-edge transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
         >
           ✨ Demos
         </button>
         <button
           type="button"
           onClick={onReset}
-          className="rounded-full bg-card px-3 py-1.5 text-[13px] font-extrabold text-ink ring-2 ring-line transition-colors hover:bg-paper-2"
+          className="min-h-[40px] rounded-full bg-card px-3 py-2 text-[13px] font-extrabold text-ink ring-2 ring-line transition-colors hover:bg-paper-2"
         >
           ↺ Reset
         </button>

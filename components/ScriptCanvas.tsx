@@ -55,7 +55,7 @@ function DropHint() {
       <div className="text-4xl">🧩</div>
       <p className="mt-2 font-display text-lg font-bold text-ink">Build your recipe!</p>
       <p className="max-w-[16rem] text-[13px] font-bold text-ink-soft">
-        Tap or drag blocks from the left. Start with <b>Use the Camera</b>.
+        Tap or drag blocks from the left. Start with <b>📷 Camera</b> or <b>✏️ Sketchpad</b>.
       </p>
     </div>
   );

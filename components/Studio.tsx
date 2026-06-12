@@ -111,6 +111,17 @@ export default function Studio({ initialDemo = null }: StudioProps) {
       .catch(() => setModelStatus("error"));
   }, [setModelStatus]);
 
+  // If the recipe's eyes are no longer the camera (palette-tap, drag, or demo
+  // swap all rebuild the script in the store, out of reach of stopCameraTracks),
+  // make sure the live getUserMedia stream is stopped so the webcam LED goes off.
+  useEffect(() => {
+    if (source !== "camera") {
+      stopCameraTracks();
+      if (useStudio.getState().camera === "on") setCamera("off");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source]);
+
   const dismissOnboarding = useCallback((then?: () => void) => {
     localStorage.setItem(ONBOARD_KEY, "1");
     setShowOnboarding(false);
@@ -143,6 +154,20 @@ export default function Studio({ initialDemo = null }: StudioProps) {
         audio: false,
       });
       streamRef.current = stream;
+      // If the OS / another app revokes the camera mid-session (or the user hits
+      // the browser lock icon), the track fires 'ended'. Without this, the LIVE
+      // badge and prediction loop keep running on a frozen last frame.
+      stream.getTracks().forEach((t) =>
+        t.addEventListener("ended", () => {
+          stopCameraTracks();
+          setCamera("denied");
+          if (useStudio.getState().phase === "live") {
+            setPhase("build");
+            setPredictions([], null);
+            flash("Camera was disconnected — tap GO to restart");
+          }
+        }),
+      );
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play().catch(() => {});
@@ -151,7 +176,7 @@ export default function Studio({ initialDemo = null }: StudioProps) {
     } catch {
       setCamera("denied");
     }
-  }, [setCamera]);
+  }, [flash, setCamera, setPhase, setPredictions]);
 
   const toggleCamera = useCallback(() => {
     if (useStudio.getState().camera === "on") {
@@ -290,37 +315,48 @@ export default function Studio({ initialDemo = null }: StudioProps) {
 
     const loop = async (t: number) => {
       if (!active) return;
-      if (t - last > 110) {
-        last = t;
-        const s = useStudio.getState();
-        const input =
-          sourceOf(s) === "sketchpad" ? sketchRef.current : videoRef.current;
-        if (input) {
-          const probs = await predict(input);
-          if (probs && active) {
-            smoothed =
-              smoothed && smoothed.length === probs.length
-                ? smoothed.map((p, i) => p * 0.65 + probs[i] * 0.35)
-                : probs;
-            const classes = classBlocks(useStudio.getState());
-            let topI = -1;
-            let topP = 0;
-            smoothed.forEach((p, i) => {
-              if (p > topP) {
-                topP = p;
-                topI = i;
+      try {
+        if (t - last > 110) {
+          last = t;
+          const s = useStudio.getState();
+          const isSketch = sourceOf(s) === "sketchpad";
+          if (isSketch && !s.sketchDirty) {
+            // Blank pad — clear any stale predictions and wait for the kid to draw.
+            setPredictions(new Array(classBlocks(s).length).fill(0), null);
+            smoothed = null;
+          } else {
+            const input = isSketch ? sketchRef.current : videoRef.current;
+            if (input) {
+              const probs = await predict(input);
+              if (probs && active) {
+                smoothed =
+                  smoothed && smoothed.length === probs.length
+                    ? smoothed.map((p, i) => p * 0.65 + probs[i] * 0.35)
+                    : probs;
+                const classes = classBlocks(useStudio.getState());
+                let topI = -1;
+                let topP = 0;
+                smoothed.forEach((p, i) => {
+                  if (p > topP) {
+                    topP = p;
+                    topI = i;
+                  }
+                });
+                const topId = topI >= 0 ? classes[topI]?.id ?? null : null;
+                setPredictions([...smoothed], topId);
+                if (topP > 0.85 && !useStudio.getState().celebrated) {
+                  celebrate();
+                  burstConfetti();
+                }
               }
-            });
-            const topId = topI >= 0 ? classes[topI]?.id ?? null : null;
-            setPredictions([...smoothed], topId);
-            if (topP > 0.85 && !useStudio.getState().celebrated) {
-              celebrate();
-              burstConfetti();
             }
           }
         }
+      } catch {
+        // TF.js error (e.g. WebGL context lost) — skip this frame and keep looping.
+      } finally {
+        if (active) rafRef.current = requestAnimationFrame(loop);
       }
-      if (active) rafRef.current = requestAnimationFrame(loop);
     };
     rafRef.current = requestAnimationFrame(loop);
     return () => {
@@ -363,9 +399,12 @@ export default function Studio({ initialDemo = null }: StudioProps) {
   };
 
   const handleReset = useCallback(() => {
+    if (!window.confirm("Start over? You'll lose all your examples and training.")) return;
     stopCameraTracks();
     reset();
     setHint(null);
+    localStorage.removeItem(ONBOARD_KEY);
+    setShowOnboarding(true);
   }, [reset]);
 
   return (
@@ -430,7 +469,7 @@ export default function Studio({ initialDemo = null }: StudioProps) {
           onBlank={() => dismissOnboarding()}
         />
       )}
-      {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
+      {showHelp && <HelpModal source={source} onClose={() => setShowHelp(false)} />}
     </CaptureContext.Provider>
   );
 }

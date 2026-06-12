@@ -36,6 +36,18 @@ export function ClassBlock({ blockId, handleProps, onRemove }: Props) {
     if (el) el.scrollLeft = el.scrollWidth;
   }, [thumbCount]);
 
+  // If this block unmounts mid-hold (removed, reordered, or the camera↔sketchpad
+  // swap rebuilds the script), kill the self-rescheduling capture timer and free
+  // the activeCaptureId so it doesn't fire on a dead class or leave a phantom glow.
+  useEffect(
+    () => () => {
+      holding.current = false;
+      if (timer.current) window.clearTimeout(timer.current);
+      if (useStudio.getState().activeCaptureId === blockId) setActiveCapture(null);
+    },
+    [blockId, setActiveCapture],
+  );
+
   if (!meta) return null;
   const capturing = activeCaptureId === blockId;
   const locked = phase !== "build";
@@ -102,6 +114,7 @@ export function ClassBlock({ blockId, handleProps, onRemove }: Props) {
             maxLength={16}
             onChange={(e) => renameClass(blockId, e.target.value)}
             placeholder="name it…"
+            aria-label={`Name for the Thing called ${meta.name || "this Thing"}`}
             className="min-w-0 flex-1 bg-transparent font-display text-[15px] font-bold text-ink outline-none"
             style={{ color: meta.color }}
           />
@@ -136,7 +149,7 @@ export function ClassBlock({ blockId, handleProps, onRemove }: Props) {
                     aria-label="Delete this example"
                     title="Delete this example"
                     onClick={() => removeSample(blockId, t.id)}
-                    className="absolute -right-1 top-0 grid h-4 w-4 place-items-center rounded-full bg-[color:var(--color-bad)] text-[9px] font-extrabold leading-none text-white shadow ring-1 ring-white/80 transition-transform hover:scale-125"
+                    className="absolute -right-1.5 -top-1.5 grid h-6 w-6 place-items-center rounded-full bg-[color:var(--color-bad)] text-[11px] font-extrabold leading-none text-white shadow ring-1 ring-white/80 transition-transform hover:scale-110"
                   >
                     ×
                   </button>

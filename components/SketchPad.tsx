@@ -230,7 +230,7 @@ export function SketchPad({ registerCanvas }: SketchPadProps) {
       </div>
 
       {/* Crayon box */}
-      <div className="flex items-center gap-1 rounded-2xl bg-white px-2 py-1.5 ring-1 ring-line">
+      <div className="flex items-center gap-1 overflow-x-auto rounded-2xl bg-white px-2 py-1.5 ring-1 ring-line">
         <div className="flex items-center gap-1" role="group" aria-label="Crayon colors">
           {CRAYONS.map((c) => (
             <button
