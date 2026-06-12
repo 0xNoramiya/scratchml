@@ -155,6 +155,15 @@ export default function Landing() {
               >
                 🚀 Start building — it&apos;s free
               </Link>
+              {/* plain anchor: no embed/thumbnail, adds zero page weight */}
+              <a
+                href="https://youtu.be/mVU8Pq_G51U"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-2xl px-4 py-3.5 font-display text-base font-bold text-ink-soft underline decoration-2 decoration-[#ecdcc0] underline-offset-4 transition-colors hover:text-ink hover:decoration-prd"
+              >
+                🎬 watch the 2-min demo
+              </a>
             </div>
 
             <p className="mt-4 text-[12px] font-bold text-ink-soft">

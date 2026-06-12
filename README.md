@@ -8,6 +8,8 @@
 
 ### 👉 Play it now: **[scratchml.fly.dev](https://scratchml.fly.dev)** 👈
 
+🎬 **[Watch the 2-minute demo](https://youtu.be/mVU8Pq_G51U)**
+
 *No code. No math. No accounts. Nothing to install.*
 
 </div>
