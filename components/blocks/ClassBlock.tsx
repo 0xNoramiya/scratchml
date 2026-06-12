@@ -30,15 +30,13 @@ export function ClassBlock({ blockId, handleProps, onRemove }: Props) {
   const stripRef = useRef<HTMLDivElement | null>(null);
   const thumbCount = meta?.thumbs.length ?? 0;
 
-  // keep the newest example in view as the strip fills up
   useEffect(() => {
     const el = stripRef.current;
     if (el) el.scrollLeft = el.scrollWidth;
   }, [thumbCount]);
 
-  // If this block unmounts mid-hold (removed, reordered, or the camera↔sketchpad
-  // swap rebuilds the script), kill the self-rescheduling capture timer and free
-  // the activeCaptureId so it doesn't fire on a dead class or leave a phantom glow.
+  // On unmount, kill the capture timer and release activeCaptureId — prevents phantom
+  // glow or stale captures if this block is removed/reordered mid-hold.
   useEffect(
     () => () => {
       holding.current = false;
@@ -96,7 +94,6 @@ export function ClassBlock({ blockId, handleProps, onRemove }: Props) {
       onRemove={onRemove}
       glow={capturing}
     >
-      {/* Title row: emoji + name + count */}
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -124,7 +121,6 @@ export function ClassBlock({ blockId, handleProps, onRemove }: Props) {
         </span>
       </div>
 
-      {/* Thumbnails (each deletable) + clear-all */}
       <div className="mt-2 flex items-center gap-2">
         <div
           ref={stripRef}

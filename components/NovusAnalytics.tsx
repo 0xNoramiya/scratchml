@@ -1,17 +1,9 @@
 import Script from "next/script";
 
 /**
- * Novus.ai analytics — REQUIRED by the hackathon (a submission without Novus
- * installed is ineligible for prizes).
- *
- * Novus gives a small embed snippet. Wire it up by setting the env vars below
- * (e.g. in `.env.local` for dev and as Fly secrets in production):
- *
- *   NEXT_PUBLIC_NOVUS_SRC = https://cdn.novus.ai/embed.js   (the <script src> Novus gives you)
- *   NEXT_PUBLIC_NOVUS_ID  = your-project-id                  (the project / site id, if any)
- *
- * If NEXT_PUBLIC_NOVUS_SRC is not set, nothing is injected (keeps local dev clean).
- * Paste the exact attributes Novus asks for once you have a project.
+ * Novus.ai analytics — required by the hackathon submission rules.
+ * Set NEXT_PUBLIC_NOVUS_SRC (script URL) and NEXT_PUBLIC_NOVUS_ID (project id) to activate.
+ * No-ops silently when NEXT_PUBLIC_NOVUS_SRC is unset.
  */
 export function NovusAnalytics() {
   const src = process.env.NEXT_PUBLIC_NOVUS_SRC;

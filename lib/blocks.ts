@@ -1,8 +1,7 @@
-// Block vocabulary for the ScratchML "recipe" + shared helpers.
+// Block vocabulary and shared helpers for the ScratchML recipe.
 
 export type BlockType = "camera" | "sketchpad" | "class" | "train" | "predict";
 
-/** Input blocks — a recipe uses exactly one of these as the model's "eyes". */
 export const SOURCE_TYPES: BlockType[] = ["camera", "sketchpad"];
 
 export interface ScriptBlock {
@@ -11,9 +10,7 @@ export interface ScriptBlock {
 }
 
 export interface BlockMeta {
-  /** kid-friendly title shown on the block */
   label: string;
-  /** one-line explanation of what this step actually does (the teaching) */
   hint: string;
   emoji: string;
   /** css color token prefix, e.g. "cam" => var(--color-cam) / var(--color-cam-edge) */
@@ -53,13 +50,11 @@ export const BLOCK_META: Record<BlockType, BlockMeta> = {
   },
 };
 
-/** Blocks offered in the palette, in display order. */
 export const PALETTE: BlockType[] = ["camera", "sketchpad", "class", "train", "predict"];
 
-/** How many of each block a recipe may contain (others are unlimited). */
+/** Blocks limited to one per recipe (class blocks are unlimited). */
 export const SINGLETON: BlockType[] = ["camera", "sketchpad", "train", "predict"];
 
-/** Distinct accent colors handed out to each "Thing" the kid teaches. */
 export const CLASS_COLORS = [
   "#ff6b6b",
   "#ffc83d",
@@ -77,7 +72,6 @@ export const FUN_EMOJIS = [
 ];
 
 let _seq = 0;
-/** Deterministic-ish unique id (no Math.random / Date in module scope concerns). */
 export function makeId(prefix = "b"): string {
   _seq += 1;
   return `${prefix}_${_seq}_${performance.now().toString(36).replace(".", "")}`;
@@ -87,7 +81,6 @@ export function tokenVars(token: string): React.CSSProperties {
   return {
     ["--blk" as string]: `var(--color-${token})`,
     ["--blk-edge" as string]: `var(--color-${token}-edge)`,
-    // WCAG-AA-readable text shade for label/value text on this block's fill.
     ["--blk-text" as string]: `var(--color-${token}-text)`,
   } as React.CSSProperties;
 }

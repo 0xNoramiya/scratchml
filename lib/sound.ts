@@ -1,9 +1,4 @@
-// Tiny sound manager for ScratchML's playful layer.
-//
-// All sounds are local /public/sounds assets (generated with ElevenLabs at
-// build time — no runtime API calls). SFX default ON, music defaults OFF;
-// both persist in localStorage. Every play() call no-ops when disabled or
-// during SSR, and browser autoplay rejections are swallowed silently.
+// Sound manager: local /public/sounds assets, SFX on / BGM off by default, both persisted in localStorage.
 
 export type SfxName = "snap" | "pop" | "whoosh" | "fanfare" | "tada";
 
@@ -46,7 +41,7 @@ export function musicEnabled(): boolean {
 export function setSfxEnabled(on: boolean): void {
   if (!isBrowser()) return;
   localStorage.setItem(SFX_KEY, on ? "1" : "0");
-  if (on) playSfx("pop"); // tiny confirmation blip
+  if (on) playSfx("pop");
 }
 
 export function setMusicEnabled(on: boolean): void {
@@ -71,7 +66,7 @@ export function playSfx(name: SfxName): void {
   el.volume = VOLUME[name];
   el.currentTime = 0;
   void el.play().catch(() => {
-    /* autoplay policy or decode hiccup — sounds are garnish, never errors */
+    /* autoplay policy or decode error — swallowed intentionally */
   });
 }
 

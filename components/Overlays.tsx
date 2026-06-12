@@ -20,11 +20,8 @@ export function Onboarding({
   /** How many examples the child has already captured this session. */
   existingExamples?: number;
 }) {
-  // Escape skips onboarding into a blank canvas (there's no explicit close X).
+  // Escape dismisses into blank canvas; re-opening mid-session requires a double-tap to confirm (loading a demo wipes existing examples).
   const panelRef = useDialog<HTMLDivElement>(onBlank);
-  // When the panel is re-opened mid-session (via the Demos button) loading a
-  // demo recipe wipes everything the child already captured. Make that one tap
-  // away from impossible: require an explicit confirm first.
   const [pendingDemo, setPendingDemo] = useState<null | "camera" | "sketch">(null);
   const hasWork = existingExamples > 0;
   const guard = (kind: "camera" | "sketch", run: () => void) => {
@@ -220,11 +217,7 @@ function Item({
   );
 }
 
-/**
- * Modal plumbing shared by both dialogs: move focus into the panel on open,
- * trap Tab inside it, dismiss on Escape, and restore focus to the trigger on
- * close. Returns a ref to attach to the dialog panel element.
- */
+/** Focus trap + Escape dismiss for both dialogs. Returns a ref for the panel element. */
 function useDialog<T extends HTMLElement>(onClose: () => void) {
   const ref = useRef<T | null>(null);
   useEffect(() => {
@@ -237,7 +230,6 @@ function useDialog<T extends HTMLElement>(onClose: () => void) {
         ) ?? [],
       ).filter((el) => el.offsetParent !== null || el === panel);
 
-    // Move focus into the dialog on open.
     (focusables()[0] ?? panel)?.focus();
 
     const onKeyDown = (e: KeyboardEvent) => {

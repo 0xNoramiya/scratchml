@@ -9,8 +9,7 @@ export const metadata: Metadata = {
     "A playground where kids and beginners build a real machine-learning model with zero code. Snap blocks, show examples (webcam or drawings), and watch it learn — live, in your browser.",
 };
 
-/* Mini "toy block" rows used in the hero illustration. Static markup —
-   the real draggable ones live in the studio. */
+// Static block-stack for the hero illustration (draggable blocks live in the studio).
 const RECIPE = [
   { emoji: "▶", label: "When I press GO", token: "ev", rotate: "-rotate-2" },
   { emoji: "✏️", label: "Use the Sketchpad", token: "skb", rotate: "rotate-1" },
@@ -78,7 +77,6 @@ export default function Landing() {
   return (
     <div className="relative overflow-x-clip">
       <BrainPreloader />
-      {/* atmosphere */}
       <div className="atmosphere">
         <span className="blob left-[8%] top-[6%] h-64 w-64 bg-[#ffd2a8] animate-float" />
         <span
@@ -92,7 +90,6 @@ export default function Landing() {
       </div>
 
       <div className="relative z-[1]">
-        {/* ---------- Nav ---------- */}
         <nav className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
           <div className="flex items-center gap-2.5">
             <LogoMark />
@@ -108,9 +105,7 @@ export default function Landing() {
           </Link>
         </nav>
 
-        {/* ---------- Hero ---------- */}
         <header className="relative mx-auto grid max-w-6xl items-center gap-10 px-5 pb-16 pt-8 md:grid-cols-2 md:pb-24 md:pt-14">
-          {/* crayon-doodle stickers (decorative) */}
           <Image
             src="/art/sticker-star.png"
             alt=""
@@ -168,7 +163,6 @@ export default function Landing() {
             </p>
           </div>
 
-          {/* Block-stack illustration */}
           <div className="relative mx-auto w-full max-w-sm">
             <div className="absolute -right-7 -top-9 z-[2] sm:-right-9">
               <span className="bob inline-block text-6xl drop-shadow-lg" aria-hidden>
@@ -215,7 +209,6 @@ export default function Landing() {
           </div>
         </header>
 
-        {/* ---------- How it works ---------- */}
         <section className="relative bg-white/55 py-16 ring-1 ring-line backdrop-blur-sm">
           <Image
             src="/art/sticker-bolt.png"
@@ -252,7 +245,6 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* ---------- Trust ---------- */}
         <section className="mx-auto max-w-6xl px-5 py-16">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {TRUST.map((t) => (
@@ -265,7 +257,6 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* ---------- Final CTA ---------- */}
         <section className="mx-auto max-w-3xl px-5 pb-20 text-center">
           <div className="rounded-[2rem] bg-prd px-6 py-12 ring-4 ring-prd-edge">
             <h2 className="font-display text-3xl font-bold text-white sm:text-4xl">
@@ -291,7 +282,6 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* ---------- Footer ---------- */}
         <footer className="border-t-2 border-line bg-card/70 py-8 backdrop-blur">
           <div className="mx-auto flex max-w-6xl flex-col items-center gap-2 px-5 text-center">
             <div className="flex items-center gap-2">

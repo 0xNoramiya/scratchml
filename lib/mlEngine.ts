@@ -1,20 +1,10 @@
-// TensorFlow.js transfer-learning engine.
-//
-// Pipeline: MobileNet (frozen feature extractor) -> small trainable head.
-// Everything runs in the browser. No data ever leaves the device.
+// TensorFlow.js transfer-learning engine: MobileNet feature extractor + trainable head, fully in-browser.
 
 import * as tf from "@tensorflow/tfjs";
 import * as mobilenet from "@tensorflow-models/mobilenet";
 import type { FlatSample } from "./samples";
 
-// alpha 0.5 keeps the download small (~5MB) and training fast, while still
-// being plenty accurate for the simple "thumbs up vs thumbs down" style tasks
-// kids will try first.
-//
-// The weights are SELF-HOSTED from /public (downloaded from TFHub's
-// mobilenet_v2_050_224/classification/2 — see README). inputRange must be
-// [0, 1] to match that model; the package would default a custom modelUrl
-// to [-1, 1] and quietly degrade the embeddings.
+// inputRange MUST be [0, 1] for the self-hosted weights; a custom modelUrl defaults to [-1, 1] and silently degrades embeddings.
 const MOBILENET_CFG = {
   version: 2 as const,
   alpha: 0.5 as const,
@@ -22,7 +12,6 @@ const MOBILENET_CFG = {
   inputRange: [0, 1] as [number, number],
 };
 
-// If the local copy is unreachable for any reason, fall back to TFHub.
 const MOBILENET_CDN_CFG = { version: 2 as const, alpha: 0.5 as const };
 
 type FeatureExtractor = mobilenet.MobileNet;
@@ -57,15 +46,14 @@ async function pickBackend(): Promise<void> {
   }
 }
 
-/** Kick off (and cache) the MobileNet download. Safe to call repeatedly. */
+/** Start (and cache) the MobileNet download; safe to call repeatedly. */
 export function loadFeatureExtractor(): Promise<FeatureExtractor> {
   if (!extractorPromise) {
     extractorPromise = pickBackend()
       .then(() => mobilenet.load(MOBILENET_CFG))
       .catch(() => mobilenet.load(MOBILENET_CDN_CFG))
       .then((net) => {
-        // Warm-up inference: compiles the GPU shaders now so the kid's very
-        // first capture doesn't stall for a second or two.
+        // Warm-up: compile GPU shaders now so the first real capture doesn't stall.
         const c = document.createElement("canvas");
         c.width = 224;
         c.height = 224;
@@ -83,7 +71,7 @@ export function loadFeatureExtractor(): Promise<FeatureExtractor> {
   return extractorPromise;
 }
 
-/** Forget a failed load attempt and try again (offline → online, etc.). */
+/** Reset a failed load attempt so the next call retries. */
 export function retryLoad(): Promise<FeatureExtractor> {
   if (!extractorReady) extractorPromise = null;
   return loadFeatureExtractor();
@@ -128,7 +116,6 @@ export async function trainHead(opts: TrainOptions): Promise<void> {
 
   const dim = samples[0].embedding.length;
 
-  // Assemble xs / ys tensors.
   const xsBuf = new Float32Array(samples.length * dim);
   const labels: number[] = [];
   samples.forEach((s, i) => {
@@ -159,17 +146,15 @@ export async function trainHead(opts: TrainOptions): Promise<void> {
           const acc = (logs?.acc ?? logs?.accuracy ?? 0) as number;
           const loss = (logs?.loss ?? 0) as number;
           opts.onEpoch?.(epoch + 1, epochs, acc, loss);
-          await tf.nextFrame(); // let the UI paint between epochs
+          await tf.nextFrame();
         },
       },
     });
-    // Only swap head after a successful fit so a failed training attempt
-    // never leaves head pointing at a disposed model or leaks the new one.
+    // Swap only after a successful fit to avoid leaving head pointing at a disposed model.
     head?.dispose();
     head = model;
   } catch (e) {
-    // Dispose the newly-built model to avoid a WebGL tensor leak; leave the
-    // existing head intact so hasTrainedModel() stays consistent.
+    // Dispose the new model to avoid a WebGL tensor leak; leave the old head intact.
     model.dispose();
     throw e;
   } finally {

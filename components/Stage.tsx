@@ -54,11 +54,9 @@ export function Stage({
     <aside className="order-first flex w-full shrink-0 flex-col gap-3 bg-white/55 px-4 py-4 ring-1 ring-line backdrop-blur-sm nice-scroll lg:order-none lg:max-h-none lg:w-[360px] lg:overflow-y-auto">
       <Mascot />
 
-      {/* Eyes: sketchpad or camera */}
       {sketchpad ? (
         <div className="relative">
           {sketchpad}
-          {/* live guess badge over the pad */}
           {showGuess && topMeta && (
             <GuessBadge name={topMeta.name} emoji={topMeta.emoji} color={topMeta.color} conf={conf} />
           )}
@@ -127,7 +125,6 @@ export function Stage({
         </div>
       )}
 
-      {/* Status / bars */}
       <div className="min-h-[2rem]">
         {live ? (
           <PredictionBars />
@@ -136,7 +133,6 @@ export function Stage({
         )}
       </div>
 
-      {/* Controls */}
       <div className="mt-auto flex flex-col gap-2 pt-1">
         {hint && (
           <div
@@ -243,9 +239,7 @@ function GoButton({
   const ready = status === "ready";
   return (
     <button
-      // Stay enabled while loading so a tap still fires feedback on touch devices
-      // (cursor-wait / opacity say nothing on a phone). When not ready we wiggle
-      // the button and announce a wait message instead of silently doing nothing.
+      // Stay enabled while loading: cursor-wait is invisible on touch, so we wiggle + announce instead of silently doing nothing.
       key={nudge}
       type="button"
       aria-disabled={!ready}

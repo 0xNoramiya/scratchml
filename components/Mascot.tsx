@@ -69,14 +69,12 @@ function RobotFace({ mood }: { mood: Mood }) {
 
   return (
     <svg width="60" height="60" viewBox="0 0 60 60" aria-label="ScratchML robot">
-      {/* antenna */}
       <line x1="30" y1="6" x2="30" y2="13" stroke="#2b2233" strokeWidth="2.5" strokeLinecap="round" />
       <circle cx="30" cy="5" r="3.4" fill={antenna} stroke="#2b2233" strokeWidth="2">
         {(mood === "boot" || mood === "think") && (
           <animate attributeName="opacity" values="1;0.3;1" dur="0.8s" repeatCount="indefinite" />
         )}
       </circle>
-      {/* head */}
       <rect x="10" y="13" width="40" height="34" rx="12" fill="#a674f2" stroke="#2b2233" strokeWidth="2.5" />
       <rect x="10" y="13" width="40" height="34" rx="12" fill="url(#g)" opacity="0.18" />
       <defs>
@@ -85,7 +83,6 @@ function RobotFace({ mood }: { mood: Mood }) {
           <stop offset="1" stopColor="#fff" stopOpacity="0" />
         </linearGradient>
       </defs>
-      {/* eyes */}
       {happy ? (
         <>
           <path d="M18 30 q4 -5 8 0" fill="none" stroke="#2b2233" strokeWidth="2.6" strokeLinecap="round" />
@@ -99,7 +96,6 @@ function RobotFace({ mood }: { mood: Mood }) {
           <circle cx={think ? 39 : 38} cy={think ? 27 : 29} r="1.7" fill="#2b2233" />
         </>
       )}
-      {/* mouth */}
       {happy ? (
         <path d="M22 37 q8 8 16 0" fill="#2b2233" />
       ) : mood === "hmm" ? (
@@ -107,7 +103,6 @@ function RobotFace({ mood }: { mood: Mood }) {
       ) : (
         <rect x="24" y="38" width="12" height="3" rx="1.5" fill="#2b2233" />
       )}
-      {/* ears */}
       <rect x="6" y="26" width="4" height="10" rx="2" fill="#864fdf" stroke="#2b2233" strokeWidth="2" />
       <rect x="50" y="26" width="4" height="10" rx="2" fill="#864fdf" stroke="#2b2233" strokeWidth="2" />
     </svg>

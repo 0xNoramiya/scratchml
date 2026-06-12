@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import type { DemoKind } from "@/components/Studio";
 
-// TF.js + getUserMedia are browser-only, so the whole studio is client-rendered.
+// TF.js and getUserMedia are browser-only; ssr:false is required.
 const Studio = dynamic(() => import("@/components/Studio"), {
   ssr: false,
   loading: () => <Splash />,

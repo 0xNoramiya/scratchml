@@ -12,8 +12,7 @@ import * as samples from "./samples";
 import { resetModel } from "./mlEngine";
 
 export interface ClassThumb {
-  /** sample id in lib/samples — deleting the thumb deletes the embedding */
-  id: string;
+  id: string; // mirrors the sample id in lib/samples — deleting the thumb deletes the embedding
   src: string;
 }
 
@@ -22,7 +21,7 @@ export interface ClassMeta {
   emoji: string;
   color: string;
   sampleCount: number;
-  thumbs: ClassThumb[]; // every captured example, oldest → newest
+  thumbs: ClassThumb[];
 }
 
 export type Phase = "build" | "training" | "live";
@@ -45,14 +44,13 @@ interface StudioState {
   camera: CameraState;
   modelStatus: ModelStatus;
   training: TrainingProgress;
-  predictions: number[]; // aligned to classBlocks() order
+  predictions: number[];
   topClassId: string | null;
   celebrated: boolean;
   activeCaptureId: string | null;
   /** has the kid drawn anything on the sketchpad since the last clear? */
   sketchDirty: boolean;
 
-  // actions
   addBlock: (type: BlockType, index?: number) => void;
   removeBlock: (id: string) => void;
   reorder: (next: ScriptBlock[]) => void;
@@ -84,11 +82,11 @@ function nextClassMeta(name?: string): ClassMeta {
   const color = CLASS_COLORS[colorCounter % CLASS_COLORS.length];
   const emoji = FUN_EMOJIS[emojiCounter % FUN_EMOJIS.length];
   colorCounter += 1;
-  emojiCounter += 3; // spread emojis apart so adjacent classes differ
+  emojiCounter += 3; // skip ahead so adjacent classes get visually distinct emojis
   return { name: name ?? `Thing ${colorCounter}`, emoji, color, sampleCount: 0, thumbs: [] };
 }
 
-/** Insert a new block in a sensible spot when the kid just clicks (no drag). */
+/** Place a new block in a sensible default position when added without a drag target. */
 function smartInsert(script: ScriptBlock[], block: ScriptBlock): ScriptBlock[] {
   const next = [...script];
   const idxOf = (t: BlockType) => next.findIndex((b) => b.type === t);
@@ -156,14 +154,13 @@ export const useStudio = create<StudioState>((set, get) => ({
   addBlock: (type, index) =>
     set((state) => {
       if (SINGLETON.includes(type) && state.script.some((b) => b.type === type)) {
-        return state; // only one of each singleton block
+        return state;
       }
       let base = state.script;
       let classMeta = { ...state.classMeta };
 
-      // Swapping eyes (camera <-> sketchpad): remove the other source block and
-      // wipe captured samples — embeddings from one source are meaningless to
-      // the other, so training on a mix would silently produce a broken model.
+      // Swapping camera <-> sketchpad wipes all samples: embeddings from different
+      // sources are incompatible, so mixing them silently breaks the trained model.
       if (SOURCE_TYPES.includes(type)) {
         const other = base.filter(
           (b) => SOURCE_TYPES.includes(b.type) && b.type !== type,
@@ -188,8 +185,7 @@ export const useStudio = create<StudioState>((set, get) => ({
       } else {
         script = smartInsert(base, block);
       }
-      // A fresh SketchPad always mounts blank; clear any stale dirty flag from a
-      // pre-swap drawing so an empty pad can't be captured as a training example.
+      // Clear sketchDirty so a blank post-swap pad can't be captured immediately.
       return { script, classMeta, sketchDirty: false };
     }),
 
@@ -271,7 +267,6 @@ export const useStudio = create<StudioState>((set, get) => ({
 
   loadExample: () =>
     set((state) => {
-      // wipe any existing class samples first
       Object.keys(state.classMeta).forEach((id) => samples.dropClass(id));
       resetModel();
       colorCounter = 0;
@@ -321,12 +316,12 @@ export const useStudio = create<StudioState>((set, get) => ({
   },
 }));
 
-/** Selector helper: the class blocks in script order (training/prediction order). */
+/** Class blocks in script order, which is also training/prediction order. */
 export function classBlocks(state: StudioState): ScriptBlock[] {
   return state.script.filter((b) => b.type === "class");
 }
 
-/** Which "eyes" block the recipe uses (selector returns a primitive — safe). */
+/** Returns a primitive so zustand selector equality check is safe. */
 export function sourceOf(state: StudioState): "camera" | "sketchpad" | null {
   const b = state.script.find((x) => SOURCE_TYPES.includes(x.type));
   return (b?.type as "camera" | "sketchpad") ?? null;

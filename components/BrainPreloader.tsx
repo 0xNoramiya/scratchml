@@ -4,11 +4,8 @@ import { useEffect } from "react";
 import { loadFeatureExtractor } from "@/lib/mlEngine";
 
 /**
- * Invisible. Starts downloading + warming MobileNet while the visitor reads
- * the landing page, so the studio's "loading brain…" is mostly or entirely
- * over by the time they click through. The module-level cache in mlEngine
- * means the studio reuses the same in-flight promise on SPA navigation, and
- * the immutable HTTP cache covers full reloads.
+ * Invisible component that pre-warms MobileNet on the landing page so the studio's
+ * load screen is mostly skipped. mlEngine's module-level cache is shared on SPA navigation.
  */
 export function BrainPreloader() {
   useEffect(() => {

@@ -1,9 +1,7 @@
-# Fly.io config for ScratchML.
-# NOTE: `app` must be globally unique. Run `fly launch --no-deploy` to claim a
-# name (it will rewrite this file), or edit the value below before deploying.
+# Fly.io config for ScratchML — https://scratchml.fly.dev
 
 app = "scratchml"
-primary_region = "sjc"
+primary_region = "sin"
 
 [build]
 

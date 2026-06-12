@@ -16,8 +16,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-# NEXT_PUBLIC_* values are inlined at build time. Pass your Novus embed here:
-#   fly deploy --build-arg NEXT_PUBLIC_NOVUS_SRC=... --build-arg NEXT_PUBLIC_NOVUS_ID=...
+# NEXT_PUBLIC_* vars are inlined at build time: fly deploy --build-arg NEXT_PUBLIC_NOVUS_SRC=... --build-arg NEXT_PUBLIC_NOVUS_ID=...
 ARG NEXT_PUBLIC_NOVUS_SRC
 ARG NEXT_PUBLIC_NOVUS_ID
 ENV NEXT_PUBLIC_NOVUS_SRC=$NEXT_PUBLIC_NOVUS_SRC

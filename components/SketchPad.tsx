@@ -68,22 +68,15 @@ export function SketchPad({ registerCanvas }: SketchPadProps) {
     [isBlank, setSketchDirty],
   );
 
-  // ---- Drawing via NATIVE listeners (passive:false) for reliability.
-  // React's synthetic events occasionally drop fast drags and can't
-  // preventDefault on passive listeners; this also lets us use
-  // getCoalescedEvents() so quick strokes stay smooth and unbroken.
+  // Native listeners (passive:false) + getCoalescedEvents(): React synthetic events drop fast drags and can't preventDefault on passive touch listeners.
   useEffect(() => {
     const c = canvasRef.current;
     if (!c) return;
-    // Paint the white background ONLY on first mount. If this effect ever
-    // re-runs (parent re-render with changed deps), repainting here would
-    // erase the kid's in-progress drawing.
+    // Fill white only on first mount — re-running fillWhite on effect re-runs would erase the kid's in-progress drawing.
+    // Also reset sketchDirty so a stale value from a camera↔sketchpad swap can't cause a blank pad to be saved as a training example.
     if (!initialized.current) {
       initialized.current = true;
       fillWhite(c);
-      // This instance starts blank, so the store must agree — otherwise a stale
-      // sketchDirty from before a camera↔sketchpad swap would let the empty pad
-      // be captured as a (blank) training example.
       setSketchDirty(false);
     }
     registerCanvas(c);
@@ -114,7 +107,7 @@ export function SketchPad({ registerCanvas }: SketchPadProps) {
     };
 
     const down = (e: PointerEvent) => {
-      if (e.button !== 0 && e.pointerType === "mouse") return; // left button only
+      if (e.button !== 0 && e.pointerType === "mouse") return;
       e.preventDefault();
       try {
         c.setPointerCapture(e.pointerId);
@@ -129,7 +122,6 @@ export function SketchPad({ registerCanvas }: SketchPadProps) {
       drawing = true;
       const p = toXY(e);
       last = p;
-      // a dot for a simple tap
       const { color, size, eraser } = toolRef.current;
       ctx.fillStyle = eraser ? "#ffffff" : color;
       ctx.beginPath();
@@ -201,7 +193,6 @@ export function SketchPad({ registerCanvas }: SketchPadProps) {
     const c = canvasRef.current;
     const ctx = c?.getContext("2d");
     if (!c || !ctx) return;
-    // clearing is undoable too
     undoStack.current.push(ctx.getImageData(0, 0, c.width, c.height));
     if (undoStack.current.length > MAX_UNDO) undoStack.current.shift();
     setUndoDepth(undoStack.current.length);
@@ -233,7 +224,6 @@ export function SketchPad({ registerCanvas }: SketchPadProps) {
         )}
       </div>
 
-      {/* Crayon box */}
       <div className="flex items-center gap-1 overflow-x-auto rounded-2xl bg-white px-2 py-1.5 ring-1 ring-line">
         <div className="flex items-center gap-1" role="group" aria-label="Crayon colors">
           {CRAYONS.map((c) => (

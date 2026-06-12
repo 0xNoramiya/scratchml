@@ -16,7 +16,6 @@ const OPENAI = process.env.OPENAI_API_KEY;
 const ELEVEN = process.env.ELEVENLABS_API_KEY;
 const only = process.argv[2]; // optional: sfx | music | images
 
-// ---------------------------------------------------------------- helpers
 async function elevenSfx(name, text, seconds) {
   const res = await fetch("https://api.elevenlabs.io/v1/sound-generation", {
     method: "POST",
@@ -26,7 +25,6 @@ async function elevenSfx(name, text, seconds) {
   if (!res.ok) throw new Error(`${name}: HTTP ${res.status} ${await res.text()}`);
   const raw = path.join(TMP, `${name}.raw.mp3`);
   await writeFile(raw, Buffer.from(await res.arrayBuffer()));
-  // normalize loudness + mono + trim leading/trailing silence
   execFileSync("ffmpeg", [
     "-y", "-i", raw,
     "-af", "silenceremove=start_periods=1:start_threshold=-45dB,areverse,silenceremove=start_periods=1:start_threshold=-45dB,areverse,loudnorm=I=-18:TP=-1.5",
@@ -49,9 +47,7 @@ async function elevenMusic(name, prompt, ms) {
     if (res.ok) {
       const raw = path.join(TMP, `${name}.raw.mp3`);
       await writeFile(raw, Buffer.from(await res.arrayBuffer()));
-      // Single-pass mp3->mp3 with loudnorm once produced a corrupt file whose
-      // frames stopped decoding ~1.7s in. Go via a WAV intermediate and add
-      // short fades so the loop edge doesn't click.
+      // Single-pass mp3->mp3 loudnorm produced corrupt output truncated ~1.7s in; go via WAV intermediate and add fades to avoid loop-edge clicks.
       const dec = path.join(TMP, `${name}.dec.wav`);
       const norm = path.join(TMP, `${name}.norm.wav`);
       execFileSync("ffmpeg", ["-y", "-v", "error", "-i", raw, dec], { stdio: "pipe" });
@@ -65,7 +61,6 @@ async function elevenMusic(name, prompt, ms) {
         "-codec:a", "libmp3lame", "-b:a", "112k", "-ar", "44100",
         path.join(SOUNDS, `${name}.mp3`),
       ], { stdio: "pipe" });
-      // sanity: refuse to ship a truncated file
       const probed = execFileSync("ffprobe", [
         "-v", "error", "-show_entries", "format=duration",
         "-of", "default=noprint_wrappers=1:nokey=1",
@@ -85,7 +80,7 @@ async function gptImage(name, prompt, { size = "1024x1024", transparent = false,
     method: "POST",
     headers: { Authorization: `Bearer ${OPENAI}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      // gpt-image-2 rejects transparent backgrounds — use 1.5 for stickers
+      // gpt-image-2 rejects transparent backgrounds; use 1.5 for stickers
       model: transparent ? "gpt-image-1.5" : "gpt-image-2",
       prompt,
       size,
@@ -103,7 +98,6 @@ async function gptImage(name, prompt, { size = "1024x1024", transparent = false,
   console.log(`  ✓ image ${name}`);
 }
 
-// ---------------------------------------------------------------- assets
 const SFX = [
   ["snap", "a single toy plastic building block snapping into place, short satisfying click, bright and playful, clean studio recording, no background noise", 0.7],
   ["pop", "a tiny cute cartoon bubble pop, soft and round, very short, playful kids game ui sound, no background noise", 0.5],
@@ -124,7 +118,6 @@ const STICKERS = [
   ["sticker-bolt", "A single kid's crayon-doodle sticker of a friendly orange lightning bolt with a tiny winking face, thick wobbly dark outline, flat colors, slight white sticker border, isolated, no background, no text"],
 ];
 
-// ---------------------------------------------------------------- main
 await mkdir(SOUNDS, { recursive: true });
 await mkdir(IMAGES, { recursive: true });
 await mkdir(TMP, { recursive: true });
@@ -143,7 +136,6 @@ if (!only || only === "music") {
 if (!only || only === "images" || only === "og") {
   console.log("OG image (OpenAI gpt-image-2)…");
   if (!OPENAI) throw new Error("OPENAI_API_KEY missing");
-  // OG: generate 1536x1024, center-crop to 1.91:1 and scale to 1200x630
   await gptImage("og", OG_PROMPT, {
     size: "1536x1024",
     post: ["-vf", "crop=1536:804:0:110,scale=1200:630"],

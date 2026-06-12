@@ -1,85 +1,58 @@
+<div align="center">
+
+<img src="public/art/og.png" alt="A friendly robot stacking colorful ScratchML blocks" width="640"/>
+
 # ScratchML 🧠🧩
 
 **Teach a computer to see — by snapping blocks together.**
 
-A Scratch-style playground where kids and beginners build a *real* machine-learning
-model with zero code. Drag colorful blocks into a recipe, show your webcam a few
-examples of each "Thing," press **GO**, and watch the model learn to recognize them
-live. Everything runs **in the browser** with TensorFlow.js — no backend, and your
-camera never leaves your device.
+### 👉 Play it now: **[scratchml.fly.dev](https://scratchml.fly.dev)** 👈
 
-Built for the **Mind the Product · "World Product Day: Everyone Ships Now"** hackathon.
+*No code. No math. No accounts. Nothing to install.*
 
-## How it works
+</div>
 
-The "recipe" the kid builds maps directly to a real ML pipeline:
+---
 
-| Block | What it teaches |
-|-------|-----------------|
-| 📷 **Use the Camera** | The model's input — live webcam frames |
-| ✏️ **Use the Sketchpad** | Camera-shy? Draw your examples instead — same pipeline, no webcam |
-| 🏷️ **Teach a Thing** (×2+) | A class label; hold to snap camera examples, or tap ➕ to add drawings |
-| 🧠 **Train the Brain** | Trains a small neural-net head via **transfer learning** on MobileNet |
-| ✨ **Guess It!** | Live inference with per-class confidence bars |
+## What is this?
 
-## Tech
+ScratchML is a playground where kids, students, and the plain curious build a **real machine-learning model** the way they'd build with toy blocks:
 
-- **Next.js 16** (App Router) + **TypeScript** + **Tailwind v4**
-- **TensorFlow.js** + **MobileNet** (frozen feature extractor) → small trainable `tf.sequential` head
-- **dnd-kit** for the snap-together block canvas · **zustand** for state · **canvas-confetti** for the win moment
-- Deployed on **Fly.io** (Docker, Next standalone output)
+1. 🧩 **Snap a recipe** — stack colorful blocks like Scratch: eyes, Things to learn, a brain, a guesser
+2. 📸 **Show examples** — snap webcam pictures of each Thing… *or draw them on the sketchpad if you're camera-shy*
+3. 🧠 **Train in seconds** — a tiny neural network studies your examples right in the browser
+4. 🎉 **Watch it guess** — show it something new and see live confidence bars (confetti included)
 
-## Local development
+The whole experience takes about two minutes from blank canvas to *"whoa, it learned!"* — and it's not a simulation. It's genuine transfer learning running on your own device.
 
-```bash
-npm install
-npm run dev        # http://localhost:3000
-```
+## ✨ The fun parts
 
-The MobileNet weights (~7.6 MB) are **self-hosted** in `public/models/mobilenet-v2-050/`
-(no third-party CDN at runtime; TFHub is only a fallback if the local copy is missing).
-They were downloaded from TFHub's `mobilenet_v2_050_224/classification/2` — to re-fetch:
+- 🎨 **Crayon sketchpad** — 7 crayons, 3 brush sizes, eraser, undo. Train a model on your doodles; no camera required
+- 🤖 **A reactive robot mascot** that boots up, thinks while training, and celebrates correct guesses with you
+- 🔊 **Toy-box sounds & music** — blocks snap, captures pop, training whooshes, wins go *ta-da* (toggleable, of course)
+- 🗑 **Real dataset curation, kid-sized** — every captured example is a thumbnail you can inspect and delete one by one
+- 📚 **It sneaks in real ML lessons**: more varied examples → smarter model; the model learns *whatever* separates your examples — including color!
 
-```bash
-BASE="https://tfhub.dev/google/imagenet/mobilenet_v2_050_224/classification/2"
-for f in model.json group1-shard1of2.bin group1-shard2of2.bin; do
-  curl -sL "$BASE/$f?tfjs-format=file" -o "public/models/mobilenet-v2-050/$f"
-done
-```
+## 🔒 Private by design
 
-Note: this model expects `inputRange: [0, 1]` — already configured in `lib/mlEngine.ts`.
-A webcam is optional — the ✏️ Sketchpad path works everywhere, including devices
-without a camera.
+Your camera frames and drawings **never leave your browser**. There is no upload, no server-side ML, no account, no dataset sitting in a cloud bucket. Close the tab and it's gone.
 
-```bash
-npm run test:e2e   # Playwright smoke test (sketch + camera + mobile), needs `npx playwright install chromium`
-```
+## 🛠 Under the hood (for the curious)
 
-## Novus.ai analytics (required for the hackathon)
+- **MobileNet v2** (self-hosted weights) as a frozen feature extractor + a small trainable head — classic transfer learning, entirely client-side via **TensorFlow.js**
+- Smart backend selection: machines with software-only WebGL automatically fall back to the CPU backend instead of stalling on shader compilation
+- The brain pre-loads while you're still reading the landing page — by the time you click *Start building*, it's ready
+- Built with Next.js, TypeScript, Tailwind, dnd-kit, and zustand; sound and art generated with ElevenLabs and OpenAI's image models
+- Tested end-to-end with a Playwright suite that *actually draws shapes and verifies the model learns them*
 
-A submission without Novus installed is ineligible. The hook is already wired in
-`components/NovusAnalytics.tsx`; you just need to supply your embed via env vars.
+## 🏆 Built for World Product Day
 
-1. Copy `.env.example` → `.env.local` and fill in the values from your Novus dashboard:
-   ```
-   NEXT_PUBLIC_NOVUS_SRC=https://…   # the <script src> Novus gives you
-   NEXT_PUBLIC_NOVUS_ID=your-id
-   ```
-2. For production, pass them as Docker build args (they're inlined at build time):
-   ```bash
-   fly deploy --build-arg NEXT_PUBLIC_NOVUS_SRC=https://… --build-arg NEXT_PUBLIC_NOVUS_ID=your-id
-   ```
+Created for **Mind the Product's "Everyone Ships Now"** hackathon — because the best way to celebrate shipping is to ship the thing that makes ML feel like play. **#EveryoneShipsNow** 🚢
 
-## Deploy to Fly.io
+---
 
-```bash
-# one-time: claim a globally-unique app name (rewrites fly.toml)
-fly launch --no-deploy --copy-config
+<div align="center">
 
-# deploy (add the Novus build args once you have them)
-fly deploy
-```
+**[▶ Teach a computer to see — right now](https://scratchml.fly.dev)**
 
-The included `Dockerfile` builds the Next.js standalone server and the container
-listens on `:8080` (matching `fly.toml`'s `internal_port`). HTTPS is forced, which
-`getUserMedia` requires in production.
+</div>

@@ -66,7 +66,6 @@ async function drawSquare(page, box, cx, cy, half) {
       await shot(page, "L1-landing");
       await page.getByRole("link", { name: /Start building/i }).click();
       await page.waitForURL("**/studio", { timeout: 15000 });
-      // fresh context → onboarding modal should greet the visitor
       await page.getByText(/Drawing demo: no camera needed/i).waitFor({ timeout: 15000 });
       log("L: ✅ landing renders, CTA reaches the studio + onboarding");
       log("L errors:", errors.length);
@@ -93,7 +92,6 @@ async function drawSquare(page, box, cx, cy, half) {
       const box = await pad.boundingBox();
       if (!box) throw new Error("no sketchpad box");
 
-      // 6 circles for class 1 (then delete one), 5 squares for class 2
       for (let i = 0; i < 6; i++) {
         await drawCircle(page, box, box.width / 2 + (i - 2) * 8, box.height / 2, 56 + i * 6);
         await page.getByText(/add this drawing/i).nth(0).click();
@@ -101,7 +99,6 @@ async function drawSquare(page, box, cx, cy, half) {
       }
       log("A: added 6 circles");
 
-      // --- per-image delete: remove one example, count should drop to 5
       await page.getByRole("button", { name: /Delete this example/i }).first().click();
       await page.waitForTimeout(300);
       const counts = await page
@@ -111,7 +108,6 @@ async function drawSquare(page, box, cx, cy, half) {
       if (counts[0] === "5") log("A: ✅ per-image delete works (6 → 5)");
       else { log(`A: ❌ per-image delete failed, count chip: ${JSON.stringify(counts)}`); failures++; }
 
-      // --- draw squares in a COLOR (red crayon) — exercises the crayon box
       await page.getByRole("button", { name: /Red crayon/i }).click();
       for (let i = 0; i < 5; i++) {
         await drawSquare(page, box, box.width / 2 + (i - 2) * 8, box.height / 2, 45 + i * 7);
@@ -120,7 +116,6 @@ async function drawSquare(page, box, cx, cy, half) {
       }
       log("A: added 5 red squares");
 
-      // --- undo: draw a stray scribble, undo it, pad should report empty again
       await drawCircle(page, box, box.width / 4, box.height / 4, 20);
       await page.getByRole("button", { name: /^Undo$/i }).click();
       await page.waitForTimeout(200);
@@ -132,13 +127,11 @@ async function drawSquare(page, box, cx, cy, half) {
       await page.getByRole("button", { name: /Train & Play/i }).click();
       await page.getByRole("button", { name: /Add more examples/i }).waitFor({ timeout: 90000 });
       log("A: trained, live");
-      // layout shifts in live (bars + toast) — the cached pad box is stale
+      // Layout shifts when live view renders (bars + toast) — re-query the pad box.
       await page.waitForTimeout(600);
       const liveBox = await pad.boundingBox();
       if (!liveBox) throw new Error("no live sketchpad box");
 
-      // draw a NEW circle and see what it guesses — back to Ink first, since
-      // the squares were trained in red (the model legitimately learns color!)
       await page.getByRole("button", { name: "Ink crayon", exact: true }).click();
       await drawCircle(page, liveBox, liveBox.width / 2, liveBox.height / 2, 72);
       await page.waitForTimeout(2600); // let EMA settle
@@ -148,7 +141,6 @@ async function drawSquare(page, box, cx, cy, half) {
       if (/circle/i.test(badge)) log("A: ✅ correctly recognized the drawn circle");
       else { log("A: ❌ did not recognize circle"); failures++; }
 
-      // and a red square (clear pad via toolbar first, match training color)
       await page.getByRole("button", { name: /Clear the pad/i }).click();
       await page.getByRole("button", { name: /Red crayon/i }).click();
       await page.waitForTimeout(300);
@@ -228,9 +220,7 @@ async function drawSquare(page, box, cx, cy, half) {
       log("C: horizontal overflow?", hScroll ? "❌ YES" : "✅ no");
       if (hScroll) failures++;
 
-      // Fix 6: the primary CTA must be reachable on a small phone, not stranded
-      // below an undiscoverable inner-scroll cap. Scroll it into view and assert
-      // it lands inside the viewport.
+      // Primary CTA must be reachable on small phones, not stranded below an inner-scroll cap.
       const go = page.getByRole("button", { name: /Train & Play/i });
       await go.scrollIntoViewIfNeeded();
       const goBox = await go.boundingBox();
