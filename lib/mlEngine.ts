@@ -199,6 +199,10 @@ export function resetModel(): void {
   head = null;
 }
 
+export function getBackend(): string {
+  return tf.getBackend() || "unknown";
+}
+
 export function tfMemoryInfo() {
   return tf.memory();
 }
