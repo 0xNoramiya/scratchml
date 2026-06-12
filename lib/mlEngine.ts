@@ -42,7 +42,17 @@ async function pickBackend(): Promise<void> {
       ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL))
       : "";
     if (/swiftshader|llvmpipe|software|basic render/i.test(renderer)) {
-      await tf.setBackend("cpu");
+      // Prefer the WASM backend (SIMD, ~ms-level inference, self-hosted
+      // binaries); the plain-JS cpu backend blocks the main thread for
+      // seconds per frame. Loaded lazily so GPU users never pay for it.
+      try {
+        const wasm = await import("@tensorflow/tfjs-backend-wasm");
+        wasm.setWasmPaths("/tfjs-wasm/");
+        const ok = await tf.setBackend("wasm");
+        if (!ok) await tf.setBackend("cpu");
+      } catch {
+        await tf.setBackend("cpu");
+      }
       await tf.ready();
     }
   } catch {
