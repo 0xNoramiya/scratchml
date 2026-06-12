@@ -1,22 +1,28 @@
+"use client";
+
 import Script from "next/script";
 
 /**
- * Novus.ai analytics — required by the hackathon submission rules.
- * Set NEXT_PUBLIC_NOVUS_SRC (script URL) and NEXT_PUBLIC_NOVUS_ID (project id) to activate.
- * No-ops silently when NEXT_PUBLIC_NOVUS_SRC is unset.
+ * Novus by Pendo — loads the Pendo agent and boots with an anonymous visitor.
  */
 export function NovusAnalytics() {
-  const src = process.env.NEXT_PUBLIC_NOVUS_SRC;
-  const id = process.env.NEXT_PUBLIC_NOVUS_ID;
-
-  if (!src) return null;
-
   return (
     <Script
-      src={src}
-      data-novus-id={id}
-      data-project-id={id}
+      id="pendo-snippet"
       strategy="afterInteractive"
+      dangerouslySetInnerHTML={{
+        __html: `
+(function(apiKey){
+    (function(p,e,n,d,o){var v,w,x,y,z;o=p[d]=p[d]||{};o._q=o._q||[];
+    v=['initialize','identify','updateOptions','pageLoad','track','trackAgent'];for(w=0,x=v.length;w<x;++w)(function(m){
+    o[m]=o[m]||function(){o._q[m===v[0]?'unshift':'push']([m].concat([].slice.call(arguments,0)));};})(v[w]);
+    y=e.createElement(n);y.async=!0;y.src='https://cdn.pendo.io/agent/static/'+apiKey+'/pendo.js';
+    z=e.getElementsByTagName(n)[0];z.parentNode.insertBefore(y,z);})(window,document,'script','pendo');
+})('b2c7b645-ee0a-4727-aa59-6edc33c9dd7f');
+
+pendo.initialize({ visitor: { id: '' } });
+`,
+      }}
     />
   );
 }
