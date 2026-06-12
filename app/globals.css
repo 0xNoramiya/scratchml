@@ -1,0 +1,205 @@
+@import "tailwindcss";
+
+/* ============================================================
+   ScratchML — "Toy-Lab" design system
+   ============================================================ */
+@theme {
+  /* Surfaces */
+  --color-paper: #fff6e9;
+  --color-paper-2: #fdeecf;
+  --color-card: #fffdf8;
+  --color-line: #ecdcc0;
+  --color-ink: #2b2233;
+  --color-ink-soft: #7a6c84;
+
+  /* Block category colors (fill / edge) */
+  --color-ev: #54c265;
+  --color-ev-edge: #379a47;
+  --color-cam: #37a8f0;
+  --color-cam-edge: #1d82c8;
+  --color-skb: #2ec4b6;
+  --color-skb-edge: #1f9e92;
+  --color-cls: #ff6fa3;
+  --color-cls-edge: #df4e85;
+  --color-trn: #ff9f45;
+  --color-trn-edge: #ec7c22;
+  --color-prd: #a674f2;
+  --color-prd-edge: #864fdf;
+  --color-go: #ffce3a;
+  --color-go-edge: #e7a90f;
+
+  /* Feedback */
+  --color-good: #2fbf71;
+  --color-bad: #ff5d5d;
+
+  --font-display: var(--font-fredoka);
+  --font-body: var(--font-nunito);
+
+  --radius-block: 16px;
+
+  --animate-float: float 9s ease-in-out infinite;
+}
+
+/* ---- Base ---- */
+html {
+  height: 100%;
+}
+body {
+  min-height: 100%;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden; /* app shell manages its own scroll regions */
+}
+
+/* Atmosphere: soft floating color blobs behind everything */
+.atmosphere {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background:
+    radial-gradient(1100px 700px at 8% -10%, #ffe6c2 0%, transparent 55%),
+    radial-gradient(900px 600px at 100% 0%, #ffd9ea 0%, transparent 50%),
+    radial-gradient(900px 700px at 50% 120%, #d6ecff 0%, transparent 55%);
+}
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(46px);
+  opacity: 0.5;
+}
+
+/* Dotted "graph paper" used on the building canvas */
+.dotgrid {
+  background-image: radial-gradient(var(--color-line) 1.6px, transparent 1.6px);
+  background-size: 22px 22px;
+  background-position: -11px -11px;
+}
+
+/* ---- Headings ---- */
+.font-display {
+  font-family: var(--font-display), var(--font-body), sans-serif;
+}
+
+/* ============================================================
+   Blocks — chunky tactile "toy keys"
+   Each block sets --blk and --blk-edge inline.
+   ============================================================ */
+.toy-block {
+  position: relative;
+  background: var(--blk);
+  border: 2.5px solid var(--blk-edge);
+  border-radius: var(--radius-block);
+  box-shadow: 0 5px 0 0 var(--blk-edge), 0 9px 14px -6px rgba(43, 34, 51, 0.45);
+  color: #fff;
+  transition:
+    transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.12s ease;
+}
+.toy-block--hover:hover {
+  transform: translateY(-2px) rotate(-0.4deg);
+  box-shadow: 0 7px 0 0 var(--blk-edge), 0 13px 18px -6px rgba(43, 34, 51, 0.5);
+}
+.toy-block--press:active {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 0 var(--blk-edge), 0 5px 9px -5px rgba(43, 34, 51, 0.5);
+}
+
+/* The little Scratch-style notch on top + bump on bottom that imply snapping */
+.snap-notch::before {
+  content: "";
+  position: absolute;
+  top: -2.5px;
+  left: 22px;
+  width: 26px;
+  height: 9px;
+  background: var(--blk);
+  border: 2.5px solid var(--blk-edge);
+  border-top: none;
+  border-radius: 0 0 7px 7px;
+}
+.snap-bump::after {
+  content: "";
+  position: absolute;
+  bottom: -11px;
+  left: 22px;
+  width: 26px;
+  height: 9px;
+  background: var(--blk);
+  border: 2.5px solid var(--blk-edge);
+  border-top: none;
+  border-radius: 0 0 7px 7px;
+  z-index: 1;
+}
+
+/* white "input chip" sitting inside a colored block */
+.chip {
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--color-ink);
+  border-radius: 11px;
+  box-shadow: inset 0 -2px 0 0 rgba(0, 0, 0, 0.08);
+}
+
+/* ============================================================
+   Animations
+   ============================================================ */
+@keyframes float {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  50% { transform: translateY(-26px) translateX(14px); }
+}
+@keyframes pop-in {
+  0% { opacity: 0; transform: translateY(10px) scale(0.92); }
+  70% { transform: translateY(-2px) scale(1.02); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(-7deg); }
+  40% { transform: rotate(6deg); }
+  60% { transform: rotate(-4deg); }
+  80% { transform: rotate(3deg); }
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(255, 93, 93, 0.5); }
+  70% { box-shadow: 0 0 0 16px rgba(255, 93, 93, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 93, 93, 0); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.pop-in { animation: pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.wiggle { animation: wiggle 0.6s ease-in-out; }
+.bob { animation: bob 2.4s ease-in-out infinite; }
+.rec-dot { animation: pulse-ring 1.4s ease-out infinite; }
+.spin { animation: spin 0.9s linear infinite; }
+
+.shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+
+/* Custom scrollbars that match the toy aesthetic */
+.nice-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+.nice-scroll::-webkit-scrollbar-thumb {
+  background: #e7cfa6;
+  border-radius: 999px;
+  border: 2px solid var(--color-paper);
+}
+.nice-scroll::-webkit-scrollbar-track { background: transparent; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; }
+}

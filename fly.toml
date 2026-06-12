@@ -1,0 +1,20 @@
+# Fly.io config for ScratchML.
+# NOTE: `app` must be globally unique. Run `fly launch --no-deploy` to claim a
+# name (it will rewrite this file), or edit the value below before deploying.
+
+app = "scratchml"
+primary_region = "sjc"
+
+[build]
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
