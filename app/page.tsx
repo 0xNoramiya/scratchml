@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
+import { BrainPreloader } from "@/components/BrainPreloader";
 
 export const metadata: Metadata = {
   title: "ScratchML — Teach a computer to see, by snapping blocks",
@@ -76,6 +77,7 @@ const TRUST = [
 export default function Landing() {
   return (
     <div className="relative overflow-x-clip">
+      <BrainPreloader />
       {/* atmosphere */}
       <div className="atmosphere">
         <span className="blob left-[8%] top-[6%] h-64 w-64 bg-[#ffd2a8] animate-float" />

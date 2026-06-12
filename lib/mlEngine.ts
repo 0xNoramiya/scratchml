@@ -33,11 +33,35 @@ let head: tf.LayersModel | null = null;
 
 export type VideoLike = HTMLVideoElement | HTMLCanvasElement;
 
+/**
+ * WebGL that is software-emulated (SwiftShader / llvmpipe / Basic Render
+ * Driver) takes 15s+ to compile MobileNet's shaders — far slower than just
+ * running on the CPU backend. Detect it and opt out of WebGL up front.
+ */
+async function pickBackend(): Promise<void> {
+  try {
+    const canvas = document.createElement("canvas");
+    const gl =
+      canvas.getContext("webgl2") ?? (canvas.getContext("webgl") as WebGLRenderingContext | null);
+    if (!gl) return; // tf will fall back to cpu on its own
+    const dbg = gl.getExtension("WEBGL_debug_renderer_info");
+    const renderer = dbg
+      ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL))
+      : "";
+    if (/swiftshader|llvmpipe|software|basic render/i.test(renderer)) {
+      await tf.setBackend("cpu");
+      await tf.ready();
+    }
+  } catch {
+    /* never block loading on detection */
+  }
+}
+
 /** Kick off (and cache) the MobileNet download. Safe to call repeatedly. */
 export function loadFeatureExtractor(): Promise<FeatureExtractor> {
   if (!extractorPromise) {
-    extractorPromise = mobilenet
-      .load(MOBILENET_CFG)
+    extractorPromise = pickBackend()
+      .then(() => mobilenet.load(MOBILENET_CFG))
       .catch(() => mobilenet.load(MOBILENET_CDN_CFG))
       .then((net) => {
         // Warm-up inference: compiles the GPU shaders now so the kid's very
