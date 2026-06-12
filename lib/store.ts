@@ -166,12 +166,23 @@ export const useStudio = create<StudioState>((set, get) => ({
           (b) => SOURCE_TYPES.includes(b.type) && b.type !== type,
         );
         if (other.length > 0) {
+          const previousSource = other[0].type;
+          const samplesCleared = Object.values(classMeta).reduce((n, m) => n + (m?.sampleCount ?? 0), 0);
+          const numClassesAffected = Object.keys(classMeta).filter((id) => (classMeta[id]?.sampleCount ?? 0) > 0).length;
           base = base.filter((b) => !SOURCE_TYPES.includes(b.type));
           Object.keys(classMeta).forEach((id) => {
             samples.clearClass(id);
             classMeta[id] = { ...classMeta[id], sampleCount: 0, thumbs: [] };
           });
           resetModel();
+          if (typeof pendo !== "undefined") {
+            pendo.track("source_type_changed", {
+              new_source: type,
+              previous_source: previousSource,
+              samples_cleared_count: samplesCleared,
+              num_classes_affected: numClassesAffected,
+            });
+          }
         }
       }
 
@@ -246,9 +257,16 @@ export const useStudio = create<StudioState>((set, get) => ({
 
   clearClassSamples: (id) =>
     set((state) => {
-      samples.clearClass(id);
       const cur = state.classMeta[id];
       if (!cur) return state;
+      const clearedCount = cur.sampleCount;
+      samples.clearClass(id);
+      if (typeof pendo !== "undefined") {
+        pendo.track("class_samples_cleared", {
+          class_name: cur.name,
+          samples_cleared_count: clearedCount,
+        });
+      }
       return {
         classMeta: { ...state.classMeta, [id]: { ...cur, sampleCount: 0, thumbs: [] } },
       };

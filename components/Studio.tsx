@@ -25,6 +25,7 @@ import {
   captureEmbedding,
   trainHead,
   predict,
+  getBackend,
 } from "@/lib/mlEngine";
 import { playSfx, resumeMusicIfEnabled } from "@/lib/sound";
 import { CaptureContext, CaptureApi } from "./CaptureContext";
@@ -96,16 +97,47 @@ export default function Studio({ initialDemo = null }: StudioProps) {
     if (initialDemo === "camera") {
       localStorage.setItem(ONBOARD_KEY, "1");
       loadExample();
+      if (typeof pendo !== "undefined") {
+        pendo.track("demo_recipe_loaded", {
+          demo_type: "camera",
+          had_existing_work: false,
+          existing_sample_count: 0,
+        });
+      }
     } else if (initialDemo === "sketch") {
       localStorage.setItem(ONBOARD_KEY, "1");
       loadSketchExample();
+      if (typeof pendo !== "undefined") {
+        pendo.track("demo_recipe_loaded", {
+          demo_type: "sketch",
+          had_existing_work: false,
+          existing_sample_count: 0,
+        });
+      }
     } else if (!localStorage.getItem(ONBOARD_KEY)) {
       setShowOnboarding(true);
     }
     setModelStatus("loading");
     loadFeatureExtractor()
-      .then(() => setModelStatus("ready"))
-      .catch(() => setModelStatus("error"));
+      .then(() => {
+        setModelStatus("ready");
+        if (typeof pendo !== "undefined") {
+          pendo.track("brain_loaded", {
+            backend: getBackend(),
+            load_source: "initial",
+          });
+        }
+      })
+      .catch((e) => {
+        setModelStatus("error");
+        if (typeof pendo !== "undefined") {
+          pendo.track("brain_load_failed", {
+            error_message: e instanceof Error ? e.message?.substring(0, 100) : "unknown",
+            is_retry: false,
+            backend_attempted: getBackend(),
+          });
+        }
+      });
     // Browser blocks autoplay until first interaction — resume music on first pointerdown.
     const resume = () => resumeMusicIfEnabled();
     window.addEventListener("pointerdown", resume, { once: true });
@@ -120,8 +152,25 @@ export default function Studio({ initialDemo = null }: StudioProps) {
   const retryBrain = useCallback(() => {
     setModelStatus("loading");
     retryLoad()
-      .then(() => setModelStatus("ready"))
-      .catch(() => setModelStatus("error"));
+      .then(() => {
+        setModelStatus("ready");
+        if (typeof pendo !== "undefined") {
+          pendo.track("brain_loaded", {
+            backend: getBackend(),
+            load_source: "retry",
+          });
+        }
+      })
+      .catch((e) => {
+        setModelStatus("error");
+        if (typeof pendo !== "undefined") {
+          pendo.track("brain_load_failed", {
+            error_message: e instanceof Error ? e.message?.substring(0, 100) : "unknown",
+            is_retry: true,
+            backend_attempted: getBackend(),
+          });
+        }
+      });
   }, [setModelStatus]);
 
   // Stop the live stream when source changes away from camera so the webcam LED goes off.
@@ -192,6 +241,12 @@ export default function Studio({ initialDemo = null }: StudioProps) {
       setCamera("on");
     } catch {
       setCamera("denied");
+      if (typeof pendo !== "undefined") {
+        pendo.track("camera_permission_denied", {
+          had_previous_camera_access: false,
+          source_at_denial: sourceOf(useStudio.getState()) || "none",
+        });
+      }
     }
   }, [flash, setCamera, setPhase, setPredictions]);
 
@@ -267,6 +322,15 @@ export default function Studio({ initialDemo = null }: StudioProps) {
         const { sampleId, count } = samples.addEmbedding(classId, emb);
         noteCapture(classId, sampleId, grabThumb(c, false), count);
         playSfx("pop");
+        if (typeof pendo !== "undefined") {
+          const st = useStudio.getState();
+          pendo.track("sample_captured", {
+            source_type: "sketchpad",
+            class_name: st.classMeta[classId]?.name || "unknown",
+            sample_count_after: count,
+            class_index: classBlocks(st).findIndex((b) => b.id === classId),
+          });
+        }
         clearSketch();
         flash("Got it! Now draw it again, a little different ✨", "ok");
         return;
@@ -278,6 +342,15 @@ export default function Studio({ initialDemo = null }: StudioProps) {
       const { sampleId, count } = samples.addEmbedding(classId, emb);
       noteCapture(classId, sampleId, grabThumb(v, true), count);
       playSfx("pop"); // throttled internally so hold-to-capture stays gentle
+      if (typeof pendo !== "undefined") {
+        const st = useStudio.getState();
+        pendo.track("sample_captured", {
+          source_type: "camera",
+          class_name: st.classMeta[classId]?.name || "unknown",
+          sample_count_after: count,
+          class_index: classBlocks(st).findIndex((b) => b.id === classId),
+        });
+      }
     },
     [clearSketch, flash, grabThumb, noteCapture],
   );
@@ -330,15 +403,35 @@ export default function Studio({ initialDemo = null }: StudioProps) {
           if (runId === runIdRef.current) setTraining({ epoch, total, acc, loss });
         },
       });
-    } catch {
+    } catch (e) {
       if (runId !== runIdRef.current) return;
+      if (typeof pendo !== "undefined") {
+        pendo.track("model_training_failed", {
+          num_classes: classes.length,
+          total_samples: flat.length,
+          epochs: s.epochs,
+          source_type: src,
+          error_message: e instanceof Error ? e.message?.substring(0, 100) : "unknown",
+        });
+      }
       flash("Training hiccup — add a few more examples and retry");
       setPhase("build");
       return;
     }
     // Abandon if Reset or source swap happened during training.
     if (runId !== runIdRef.current || useStudio.getState().phase !== "training") return;
-    const finalAcc = Math.round(useStudio.getState().training.acc * 100);
+    const { acc: finalAccRaw, loss: finalLoss } = useStudio.getState().training;
+    const finalAcc = Math.round(finalAccRaw * 100);
+    if (typeof pendo !== "undefined") {
+      pendo.track("model_training_completed", {
+        num_classes: classes.length,
+        total_samples: flat.length,
+        epochs: s.epochs,
+        final_accuracy: finalAcc,
+        final_loss: Math.round(finalLoss * 1000) / 1000,
+        source_type: src,
+      });
+    }
     useStudio.setState({ celebrated: false, predictions: [], topClassId: null });
     if (src === "sketchpad") clearSketch();
     playSfx("fanfare");
@@ -400,6 +493,14 @@ export default function Studio({ initialDemo = null }: StudioProps) {
                   celebrate();
                   playSfx("tada");
                   burstConfetti();
+                  if (typeof pendo !== "undefined") {
+                    pendo.track("prediction_celebrated", {
+                      predicted_class_name: topId ? s.classMeta[topId]?.name || "unknown" : "unknown",
+                      confidence: Math.round(topP * 100),
+                      num_classes: classes.length,
+                      source_type: isSketch ? "sketchpad" : "camera",
+                    });
+                  }
                 }
               }
             }
@@ -453,6 +554,17 @@ export default function Studio({ initialDemo = null }: StudioProps) {
   };
 
   const handleReset = useCallback(() => {
+    const s = useStudio.getState();
+    const numClasses = classBlocks(s).length;
+    const totalSamples = Object.values(s.classMeta).reduce((n, m) => n + (m?.sampleCount ?? 0), 0);
+    if (typeof pendo !== "undefined") {
+      pendo.track("session_reset", {
+        num_classes_at_reset: numClasses,
+        total_samples_at_reset: totalSamples,
+        phase_at_reset: s.phase,
+        source_type_at_reset: sourceOf(s) || "none",
+      });
+    }
     runIdRef.current++; // invalidate any in-flight training
     stopCameraTracks();
     reset();
@@ -523,9 +635,38 @@ export default function Studio({ initialDemo = null }: StudioProps) {
             (n, m) => n + (m?.sampleCount ?? 0),
             0,
           )}
-          onExample={() => dismissOnboarding(loadExample)}
-          onSketchExample={() => dismissOnboarding(loadSketchExample)}
-          onBlank={() => dismissOnboarding()}
+          onExample={() => {
+            const existingCount = Object.values(useStudio.getState().classMeta).reduce((n, m) => n + (m?.sampleCount ?? 0), 0);
+            if (typeof pendo !== "undefined") {
+              pendo.track("demo_recipe_loaded", {
+                demo_type: "camera",
+                had_existing_work: existingCount > 0,
+                existing_sample_count: existingCount,
+              });
+            }
+            dismissOnboarding(loadExample);
+          }}
+          onSketchExample={() => {
+            const existingCount = Object.values(useStudio.getState().classMeta).reduce((n, m) => n + (m?.sampleCount ?? 0), 0);
+            if (typeof pendo !== "undefined") {
+              pendo.track("demo_recipe_loaded", {
+                demo_type: "sketch",
+                had_existing_work: existingCount > 0,
+                existing_sample_count: existingCount,
+              });
+            }
+            dismissOnboarding(loadSketchExample);
+          }}
+          onBlank={() => {
+            const existingCount = Object.values(useStudio.getState().classMeta).reduce((n, m) => n + (m?.sampleCount ?? 0), 0);
+            if (typeof pendo !== "undefined") {
+              pendo.track("build_from_scratch_started", {
+                had_existing_work: existingCount > 0,
+                existing_sample_count: existingCount,
+              });
+            }
+            dismissOnboarding();
+          }}
         />
       )}
       {showHelp && <HelpModal source={source} onClose={() => setShowHelp(false)} />}
