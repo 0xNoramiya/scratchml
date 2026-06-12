@@ -12,19 +12,27 @@
   --color-ink: #2b2233;
   --color-ink-soft: #7a6c84;
 
-  /* Block category colors (fill / edge) */
+  /* Block category colors (fill / edge / readable-text).
+     The -text shades are dark enough to clear WCAG AA (4.5:1) for the bold
+     label/value text that sits on the saturated fill — plain white fails. */
   --color-ev: #54c265;
   --color-ev-edge: #379a47;
+  --color-ev-text: #15401d;
   --color-cam: #37a8f0;
   --color-cam-edge: #1d82c8;
+  --color-cam-text: #00345c;
   --color-skb: #2ec4b6;
   --color-skb-edge: #1f9e92;
+  --color-skb-text: #0c3b36;
   --color-cls: #ff6fa3;
   --color-cls-edge: #df4e85;
+  --color-cls-text: #6b0031;
   --color-trn: #ff9f45;
   --color-trn-edge: #ec7c22;
+  --color-trn-text: #6b3300;
   --color-prd: #a674f2;
   --color-prd-edge: #864fdf;
+  --color-prd-text: #2e1359;
   --color-go: #ffce3a;
   --color-go-edge: #e7a90f;
 

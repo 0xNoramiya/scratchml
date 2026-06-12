@@ -188,7 +188,9 @@ export const useStudio = create<StudioState>((set, get) => ({
       } else {
         script = smartInsert(base, block);
       }
-      return { script, classMeta };
+      // A fresh SketchPad always mounts blank; clear any stale dirty flag from a
+      // pre-swap drawing so an empty pad can't be captured as a training example.
+      return { script, classMeta, sketchDirty: false };
     }),
 
   removeBlock: (id) =>

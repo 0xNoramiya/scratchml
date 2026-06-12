@@ -26,7 +26,10 @@ export function Mascot() {
     line = "Warming up my brain… one sec! 🔌";
   } else if (phase === "training") {
     mood = "think";
-    line = `Studying your examples… ${Math.round((training.acc || 0) * 100)}% there!`;
+    line =
+      training.epoch > 0
+        ? `Studying your examples… ${Math.round((training.acc || 0) * 100)}% there!`
+        : "Studying your examples… hang on!";
   } else if (phase === "live") {
     if (conf > 0.75 && topName) {
       mood = "happy";

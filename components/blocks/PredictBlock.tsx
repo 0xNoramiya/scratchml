@@ -28,11 +28,11 @@ export function PredictBlock({ handleProps, onRemove }: Props) {
       <div className="flex items-center gap-3">
         <span className="text-2xl">{meta.emoji}</span>
         <div className="min-w-0 flex-1 leading-tight">
-          <div className="font-display text-[15px] font-bold text-white">{meta.label}</div>
-          <div className="truncate text-[12px] font-bold text-white/80">{hint}</div>
+          <div className="font-display text-[15px] font-bold text-[color:var(--blk-text)]">{meta.label}</div>
+          <div className="truncate text-[12px] font-bold text-[color:var(--blk-text)]/90">{hint}</div>
         </div>
         {live && (
-          <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[12px] font-extrabold text-[color:var(--blk-edge)]">
+          <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[12px] font-extrabold text-[color:var(--blk-text)]">
             {topName ? (
               <>
                 <span className="text-base leading-none">{topEmoji}</span>

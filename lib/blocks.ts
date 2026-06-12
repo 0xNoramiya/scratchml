@@ -87,5 +87,7 @@ export function tokenVars(token: string): React.CSSProperties {
   return {
     ["--blk" as string]: `var(--color-${token})`,
     ["--blk-edge" as string]: `var(--color-${token}-edge)`,
+    // WCAG-AA-readable text shade for label/value text on this block's fill.
+    ["--blk-text" as string]: `var(--color-${token}-text)`,
   } as React.CSSProperties;
 }

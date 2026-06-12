@@ -66,8 +66,8 @@ function PaletteItem({ type, locked }: { type: BlockType; locked: boolean }) {
       <div className="flex items-center gap-2.5">
         <span className="text-2xl">{meta.emoji}</span>
         <div className="leading-tight">
-          <div className="font-display text-[14px] font-bold text-white">{meta.label}</div>
-          {already && <div className="text-[11px] font-bold text-white/80">added ✓</div>}
+          <div className="font-display text-[14px] font-bold text-[color:var(--blk-text)]">{meta.label}</div>
+          {already && <div className="text-[11px] font-bold text-[color:var(--blk-text)]/90">added ✓</div>}
         </div>
       </div>
     </button>

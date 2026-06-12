@@ -81,6 +81,10 @@ export function SketchPad({ registerCanvas }: SketchPadProps) {
     if (!initialized.current) {
       initialized.current = true;
       fillWhite(c);
+      // This instance starts blank, so the store must agree — otherwise a stale
+      // sketchDirty from before a camera↔sketchpad swap would let the empty pad
+      // be captured as a (blank) training example.
+      setSketchDirty(false);
     }
     registerCanvas(c);
     const ctx = c.getContext("2d");
@@ -242,7 +246,7 @@ export function SketchPad({ registerCanvas }: SketchPadProps) {
                 setColor(c.value);
                 setEraser(false);
               }}
-              className={`h-6 w-6 shrink-0 rounded-full ring-offset-1 transition-transform hover:scale-110 ${
+              className={`h-9 w-9 shrink-0 rounded-full ring-offset-1 transition-transform hover:scale-110 ${
                 !eraser && color === c.value ? "scale-110 ring-2 ring-ink" : "ring-1 ring-black/10"
               }`}
               style={{ background: c.value }}
@@ -254,7 +258,7 @@ export function SketchPad({ registerCanvas }: SketchPadProps) {
             aria-pressed={eraser}
             onClick={() => setEraser((v) => !v)}
             title="Eraser"
-            className={`grid h-6 w-6 shrink-0 place-items-center rounded-full bg-paper-2 text-[12px] transition-transform hover:scale-110 ${
+            className={`grid h-9 w-9 shrink-0 place-items-center rounded-full bg-paper-2 text-[14px] transition-transform hover:scale-110 ${
               eraser ? "scale-110 ring-2 ring-ink" : "ring-1 ring-black/10"
             }`}
           >
@@ -272,7 +276,7 @@ export function SketchPad({ registerCanvas }: SketchPadProps) {
               aria-label={`${s.name} brush`}
               aria-pressed={size === s.value}
               onClick={() => setSize(s.value)}
-              className={`grid h-6 w-6 shrink-0 place-items-center rounded-full transition-transform hover:scale-110 ${
+              className={`grid h-9 w-9 shrink-0 place-items-center rounded-full transition-transform hover:scale-110 ${
                 size === s.value ? "bg-paper-2 ring-2 ring-ink" : "ring-1 ring-black/10"
               }`}
             >
@@ -292,7 +296,7 @@ export function SketchPad({ registerCanvas }: SketchPadProps) {
           disabled={undoDepth === 0}
           aria-label="Undo"
           title="Undo"
-          className="grid h-6 w-7 shrink-0 place-items-center rounded-lg text-[13px] ring-1 ring-black/10 transition-colors hover:bg-paper-2 disabled:opacity-35"
+          className="grid h-9 w-10 shrink-0 place-items-center rounded-lg text-[15px] ring-1 ring-black/10 transition-colors hover:bg-paper-2 disabled:opacity-35"
         >
           ↶
         </button>
@@ -302,7 +306,7 @@ export function SketchPad({ registerCanvas }: SketchPadProps) {
           disabled={!sketchDirty}
           aria-label="Clear the pad"
           title="Clear"
-          className="grid h-6 w-7 shrink-0 place-items-center rounded-lg text-[12px] ring-1 ring-black/10 transition-colors hover:bg-paper-2 disabled:opacity-35"
+          className="grid h-9 w-10 shrink-0 place-items-center rounded-lg text-[14px] ring-1 ring-black/10 transition-colors hover:bg-paper-2 disabled:opacity-35"
         >
           🧽
         </button>

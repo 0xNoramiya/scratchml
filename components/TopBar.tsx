@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 
 interface TopBarProps {
@@ -9,6 +10,17 @@ interface TopBarProps {
 }
 
 export function TopBar({ onShowDemos, onReset, onHelp }: TopBarProps) {
+  const [confirming, setConfirming] = useState(false);
+
+  const handleResetClick = () => setConfirming(true);
+
+  const handleConfirm = () => {
+    setConfirming(false);
+    onReset();
+  };
+
+  const handleCancel = () => setConfirming(false);
+
   return (
     <header className="z-10 flex items-center justify-between gap-3 border-b-2 border-line bg-card/80 px-4 py-2.5 backdrop-blur">
       <Link
@@ -27,28 +39,52 @@ export function TopBar({ onShowDemos, onReset, onHelp }: TopBarProps) {
         </div>
       </Link>
 
-      <div className="flex items-center gap-1.5">
-        <button
-          type="button"
-          onClick={onHelp}
-          className="min-h-[40px] rounded-full px-3 py-2 text-[13px] font-extrabold text-ink-soft transition-colors hover:bg-paper-2"
-        >
-          ❓ How
-        </button>
-        <button
-          type="button"
-          onClick={onShowDemos}
-          className="min-h-[40px] rounded-full bg-prd px-3.5 py-2 text-[13px] font-extrabold text-white ring-2 ring-prd-edge transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
-        >
-          ✨ Demos
-        </button>
-        <button
-          type="button"
-          onClick={onReset}
-          className="min-h-[40px] rounded-full bg-card px-3 py-2 text-[13px] font-extrabold text-ink ring-2 ring-line transition-colors hover:bg-paper-2"
-        >
-          ↺ Reset
-        </button>
+      <div className="flex flex-wrap items-center justify-end gap-1.5 gap-y-1">
+        {confirming ? (
+          <>
+            <span className="hidden text-[13px] font-bold text-ink-soft sm:inline">
+              Lose all examples?
+            </span>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              className="min-h-[40px] rounded-full bg-red-500 px-3 py-2 text-[13px] font-extrabold text-white ring-2 ring-red-600 transition-colors hover:bg-red-600"
+            >
+              ↺ Yes, reset
+            </button>
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="min-h-[40px] rounded-full bg-card px-3 py-2 text-[13px] font-extrabold text-ink ring-2 ring-line transition-colors hover:bg-paper-2"
+            >
+              ✕ Cancel
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={onHelp}
+              className="min-h-[40px] rounded-full px-3 py-2 text-[13px] font-extrabold text-ink-soft transition-colors hover:bg-paper-2"
+            >
+              ❓ How
+            </button>
+            <button
+              type="button"
+              onClick={onShowDemos}
+              className="min-h-[40px] rounded-full bg-prd px-3.5 py-2 text-[13px] font-extrabold text-white ring-2 ring-prd-edge transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
+            >
+              ✨ Demos
+            </button>
+            <button
+              type="button"
+              onClick={handleResetClick}
+              className="min-h-[40px] rounded-full bg-card px-3 py-2 text-[13px] font-extrabold text-ink ring-2 ring-line transition-colors hover:bg-paper-2"
+            >
+              ↺ Reset
+            </button>
+          </>
+        )}
       </div>
     </header>
   );

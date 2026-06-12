@@ -56,6 +56,8 @@ export default function Studio({ initialDemo = null }: StudioProps) {
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
   const hintTimer = useRef<number | null>(null);
+  const mountedRef = useRef(true);
+  const runIdRef = useRef(0);
 
   const phase = useStudio((s) => s.phase);
   const camera = useStudio((s) => s.camera);
@@ -87,6 +89,11 @@ export default function Studio({ initialDemo = null }: StudioProps) {
 
   // ---- First load: MobileNet + onboarding / demo deep-link ----
   useEffect(() => {
+    // Re-arm on every (re)mount. React Strict Mode in dev mounts → unmounts →
+    // remounts; the unmount cleanup flips this to false, and without re-arming
+    // it would stay false forever, making ensureCamera's "still mounted?" guard
+    // permanently abort and the camera could never turn on.
+    mountedRef.current = true;
     if (initialDemo === "camera") {
       localStorage.setItem(ONBOARD_KEY, "1");
       loadExample();
@@ -100,7 +107,10 @@ export default function Studio({ initialDemo = null }: StudioProps) {
     loadFeatureExtractor()
       .then(() => setModelStatus("ready"))
       .catch(() => setModelStatus("error"));
-    return () => stopCameraTracks();
+    return () => {
+      mountedRef.current = false;
+      stopCameraTracks();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -153,6 +163,16 @@ export default function Studio({ initialDemo = null }: StudioProps) {
         video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
         audio: false,
       });
+      // The recipe's eyes may have swapped to the sketchpad while the permission
+      // prompt was open, OR the component may have unmounted (e.g. user navigated
+      // away while the permission dialog was showing). In either case the stream
+      // must be killed immediately — nothing else will stop it, and the hardware
+      // camera LED would stay on with no UI.
+      if (!mountedRef.current || sourceOf(useStudio.getState()) !== "camera") {
+        stream.getTracks().forEach((t) => t.stop());
+        if (mountedRef.current) setCamera("off");
+        return;
+      }
       streamRef.current = stream;
       // If the OS / another app revokes the camera mid-session (or the user hits
       // the browser lock icon), the track fires 'ended'. Without this, the LIVE
@@ -182,10 +202,13 @@ export default function Studio({ initialDemo = null }: StudioProps) {
     if (useStudio.getState().camera === "on") {
       stopCameraTracks();
       setCamera("off");
+      // If we were mid-play, the stream is gone — wipe stale bars + guess badge
+      // so a confident-looking guess can't linger over the "Camera is off" panel.
+      if (useStudio.getState().phase === "live") setPredictions([], null);
     } else {
       void ensureCamera();
     }
-  }, [ensureCamera, setCamera]);
+  }, [ensureCamera, setCamera, setPredictions]);
 
   /** Camera-shy escape hatch: swap the recipe's eyes to the sketchpad. */
   const useSketchInstead = useCallback(() => {
@@ -230,7 +253,16 @@ export default function Studio({ initialDemo = null }: StudioProps) {
   const captureSample = useCallback(
     async (classId: string) => {
       const state = useStudio.getState();
-      if (sourceOf(state) === "sketchpad") {
+      const srcAtStart = sourceOf(state);
+      // Inference is async (~80ms). If the kid taps the OTHER eyes block while a
+      // capture is in flight, the swap wipes samples but keeps class blocks — so a
+      // late-resolving embedding from the OLD source would land in the now-other-
+      // source class. Re-read state after the await and drop it if anything moved.
+      const stillValid = () => {
+        const st = useStudio.getState();
+        return sourceOf(st) === srcAtStart && !!st.classMeta[classId];
+      };
+      if (srcAtStart === "sketchpad") {
         const c = sketchRef.current;
         if (!c) return;
         if (!state.sketchDirty) {
@@ -238,6 +270,7 @@ export default function Studio({ initialDemo = null }: StudioProps) {
           throw new Error("empty-sketch");
         }
         const emb = await captureEmbedding(c);
+        if (!stillValid()) return;
         const { sampleId, count } = samples.addEmbedding(classId, emb);
         noteCapture(classId, sampleId, grabThumb(c, false), count);
         clearSketch();
@@ -247,6 +280,7 @@ export default function Studio({ initialDemo = null }: StudioProps) {
       const v = videoRef.current;
       if (!v) return;
       const emb = await captureEmbedding(v); // throws if frame not ready
+      if (!stillValid()) return;
       const { sampleId, count } = samples.addEmbedding(classId, emb);
       noteCapture(classId, sampleId, grabThumb(v, true), count);
     },
@@ -277,7 +311,18 @@ export default function Studio({ initialDemo = null }: StudioProps) {
     }
     if (s.modelStatus !== "ready") return flash("Brain is still loading… try again!");
 
-    if (src === "camera") await ensureCamera();
+    if (src === "camera") {
+      await ensureCamera();
+      // Don't train + drop into a dead live session when the camera is blocked:
+      // the prediction loop would have no frames and the bars would sit at 0.
+      if (useStudio.getState().camera !== "on") {
+        return flash("I need the camera to play — turn it on or switch to the Sketchpad ✏️");
+      }
+    }
+    // Tag this run so a Reset (or any phase change) that fires mid-training can
+    // be detected after the long await — otherwise the resolved trainHead would
+    // shove the freshly-blank session into 'live' against an empty script.
+    const runId = ++runIdRef.current;
     setPhase("training");
     setTraining({ epoch: 0, total: s.epochs, acc: 0, loss: 0 });
 
@@ -287,13 +332,18 @@ export default function Studio({ initialDemo = null }: StudioProps) {
         samples: flat,
         numClasses: classes.length,
         epochs: s.epochs,
-        onEpoch: (epoch, total, acc, loss) => setTraining({ epoch, total, acc, loss }),
+        onEpoch: (epoch, total, acc, loss) => {
+          if (runId === runIdRef.current) setTraining({ epoch, total, acc, loss });
+        },
       });
     } catch {
+      if (runId !== runIdRef.current) return;
       flash("Training hiccup — add a few more examples and retry");
       setPhase("build");
       return;
     }
+    // Reset (or a swap) happened while we were training — abandon this stale run.
+    if (runId !== runIdRef.current || useStudio.getState().phase !== "training") return;
     const finalAcc = Math.round(useStudio.getState().training.acc * 100);
     useStudio.setState({ celebrated: false, predictions: [], topClassId: null });
     if (src === "sketchpad") clearSketch();
@@ -304,7 +354,10 @@ export default function Studio({ initialDemo = null }: StudioProps) {
   const stop = useCallback(() => {
     setPhase("build");
     setPredictions([], null);
-  }, [setPhase, setPredictions]);
+    // Clear the doodle the kid drew while testing so it can't be tapped straight
+    // back in as a (mislabeled) training example.
+    if (sourceOf(useStudio.getState()) === "sketchpad") clearSketch();
+  }, [clearSketch, setPhase, setPredictions]);
 
   // ---- Live prediction loop (with EMA smoothing so bars don't flicker) ----
   useEffect(() => {
@@ -328,6 +381,11 @@ export default function Studio({ initialDemo = null }: StudioProps) {
             const input = isSketch ? sketchRef.current : videoRef.current;
             if (input) {
               const probs = await predict(input);
+              if (!isSketch && probs === null && active) {
+                // Camera turned off (or stream lost) mid-play — clear stale UI.
+                setPredictions(new Array(classBlocks(useStudio.getState()).length).fill(0), null);
+                smoothed = null;
+              }
               if (probs && active) {
                 smoothed =
                   smoothed && smoothed.length === probs.length
@@ -399,7 +457,7 @@ export default function Studio({ initialDemo = null }: StudioProps) {
   };
 
   const handleReset = useCallback(() => {
-    if (!window.confirm("Start over? You'll lose all your examples and training.")) return;
+    runIdRef.current++; // invalidate any in-flight training run
     stopCameraTracks();
     reset();
     setHint(null);
@@ -445,6 +503,7 @@ export default function Studio({ initialDemo = null }: StudioProps) {
               onRun={run}
               onStop={stop}
               onRetryBrain={retryBrain}
+              onBrainNotReady={() => flash("Still warming up — try again in a second! 🔌")}
               hint={hint}
               sketchpad={
                 source === "sketchpad" ? (
@@ -464,6 +523,10 @@ export default function Studio({ initialDemo = null }: StudioProps) {
 
       {showOnboarding && (
         <Onboarding
+          existingExamples={Object.values(useStudio.getState().classMeta).reduce(
+            (n, m) => n + (m?.sampleCount ?? 0),
+            0,
+          )}
           onExample={() => dismissOnboarding(loadExample)}
           onSketchExample={() => dismissOnboarding(loadSketchExample)}
           onBlank={() => dismissOnboarding()}
@@ -483,7 +546,7 @@ function BlockGhost({ type }: { type: BlockType }) {
     >
       <div className="flex items-center gap-2.5">
         <span className="text-2xl">{meta.emoji}</span>
-        <span className="font-display text-[15px] font-bold text-white">{meta.label}</span>
+        <span className="font-display text-[15px] font-bold text-[color:var(--blk-text)]">{meta.label}</span>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const STEPS = [
   { emoji: "✨", title: "Show", text: "Snap camera examples — or draw them on the sketchpad." },
@@ -12,13 +12,28 @@ export function Onboarding({
   onExample,
   onSketchExample,
   onBlank,
+  existingExamples = 0,
 }: {
   onExample: () => void;
   onSketchExample: () => void;
   onBlank: () => void;
+  /** How many examples the child has already captured this session. */
+  existingExamples?: number;
 }) {
   // Escape skips onboarding into a blank canvas (there's no explicit close X).
   const panelRef = useDialog<HTMLDivElement>(onBlank);
+  // When the panel is re-opened mid-session (via the Demos button) loading a
+  // demo recipe wipes everything the child already captured. Make that one tap
+  // away from impossible: require an explicit confirm first.
+  const [pendingDemo, setPendingDemo] = useState<null | "camera" | "sketch">(null);
+  const hasWork = existingExamples > 0;
+  const guard = (kind: "camera" | "sketch", run: () => void) => {
+    if (hasWork && pendingDemo !== kind) {
+      setPendingDemo(kind);
+      return;
+    }
+    run();
+  };
   return (
     <Backdrop onClose={onBlank}>
       <div
@@ -43,7 +58,7 @@ export function Onboarding({
           model — right here in your browser.
         </p>
 
-        <div className="mt-5 grid grid-cols-3 gap-2.5">
+        <div className="mt-5 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
           {STEPS.map((s) => (
             <div key={s.title} className="rounded-2xl bg-paper p-3 text-center ring-1 ring-line">
               <div className="text-2xl">{s.emoji}</div>
@@ -53,28 +68,52 @@ export function Onboarding({
           ))}
         </div>
 
+        {hasWork && (
+          <p
+            role="alert"
+            className="mt-5 rounded-2xl bg-[color:var(--color-bad)]/15 px-3 py-2 text-center text-[12px] font-extrabold text-ink ring-1 ring-[color:var(--color-bad)]/40"
+          >
+            ⚠️ Loading a demo replaces your {existingExamples}{" "}
+            {existingExamples === 1 ? "example" : "examples"}. Tap a demo twice to confirm.
+          </p>
+        )}
+
         <div className="mt-6 flex flex-col gap-2.5">
           <button
             type="button"
-            onClick={onExample}
+            onClick={() => guard("camera", onExample)}
             className="rounded-2xl bg-go px-4 py-3 font-display text-lg font-bold text-ink ring-2 ring-go-edge shadow-[0_5px_0_0_var(--color-go-edge)] transition-transform hover:-translate-y-0.5 active:translate-y-1 active:shadow-[0_1px_0_0_var(--color-go-edge)]"
           >
-            📷 Camera demo: Happy vs Sad
+            {pendingDemo === "camera"
+              ? "⚠️ Tap again to replace your examples"
+              : "📷 Camera demo: Happy vs Sad"}
           </button>
           <button
             type="button"
-            onClick={onSketchExample}
-            className="rounded-2xl bg-skb px-4 py-3 font-display text-lg font-bold text-white ring-2 ring-skb-edge shadow-[0_5px_0_0_var(--color-skb-edge)] transition-transform hover:-translate-y-0.5 active:translate-y-1 active:shadow-[0_1px_0_0_var(--color-skb-edge)]"
+            onClick={() => guard("sketch", onSketchExample)}
+            className="rounded-2xl bg-skb px-4 py-3 font-display text-lg font-bold text-[color:var(--color-skb-text)] ring-2 ring-skb-edge shadow-[0_5px_0_0_var(--color-skb-edge)] transition-transform hover:-translate-y-0.5 active:translate-y-1 active:shadow-[0_1px_0_0_var(--color-skb-edge)]"
           >
-            ✏️ Drawing demo: no camera needed!
+            {pendingDemo === "sketch"
+              ? "⚠️ Tap again to replace your examples"
+              : "✏️ Drawing demo: no camera needed!"}
           </button>
-          <button
-            type="button"
-            onClick={onBlank}
-            className="rounded-2xl bg-card px-4 py-2.5 font-display text-base font-bold text-ink ring-2 ring-line transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
-          >
-            🧩 Build my own from scratch
-          </button>
+          {hasWork ? (
+            <button
+              type="button"
+              onClick={onBlank}
+              className="rounded-2xl bg-card px-4 py-2.5 font-display text-base font-bold text-ink ring-2 ring-line transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
+            >
+              ✕ Keep building — don&apos;t change anything
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onBlank}
+              className="rounded-2xl bg-card px-4 py-2.5 font-display text-base font-bold text-ink ring-2 ring-line transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
+            >
+              🧩 Build my own from scratch
+            </button>
+          )}
         </div>
 
         <p className="mt-4 text-center text-[11px] font-bold text-ink-soft">

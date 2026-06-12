@@ -130,7 +130,7 @@ async function drawSquare(page, box, cx, cy, half) {
       await shot(page, "A2-samples");
 
       await page.getByRole("button", { name: /Train & Play/i }).click();
-      await page.getByRole("button", { name: /Teach me more/i }).waitFor({ timeout: 90000 });
+      await page.getByRole("button", { name: /Add more examples/i }).waitFor({ timeout: 90000 });
       log("A: trained, live");
       // layout shifts in live (bars + toast) — the cached pad box is stale
       await page.waitForTimeout(600);
@@ -193,7 +193,7 @@ async function drawSquare(page, box, cx, cy, half) {
       }
       log("B: captured both classes");
       await page.getByRole("button", { name: /Train & Play/i }).click();
-      await page.getByRole("button", { name: /Teach me more/i }).waitFor({ timeout: 90000 });
+      await page.getByRole("button", { name: /Add more examples/i }).waitFor({ timeout: 90000 });
       log("B: ✅ camera path still works end-to-end");
       await shot(page, "B1-camera-live");
 
@@ -227,6 +227,18 @@ async function drawSquare(page, box, cx, cy, half) {
       );
       log("C: horizontal overflow?", hScroll ? "❌ YES" : "✅ no");
       if (hScroll) failures++;
+
+      // Fix 6: the primary CTA must be reachable on a small phone, not stranded
+      // below an undiscoverable inner-scroll cap. Scroll it into view and assert
+      // it lands inside the viewport.
+      const go = page.getByRole("button", { name: /Train & Play/i });
+      await go.scrollIntoViewIfNeeded();
+      const goBox = await go.boundingBox();
+      const vp = page.viewportSize();
+      const goVisible = !!goBox && goBox.y >= 0 && goBox.y + goBox.height <= vp.height + 2;
+      log("C: GO button reachable on mobile?", goVisible ? "✅ yes" : "❌ no");
+      if (!goVisible) failures++;
+
       log("C errors:", errors.length);
       if (errors.length) failures++;
     } catch (e) {

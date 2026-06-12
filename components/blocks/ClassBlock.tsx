@@ -149,7 +149,7 @@ export function ClassBlock({ blockId, handleProps, onRemove }: Props) {
                     aria-label="Delete this example"
                     title="Delete this example"
                     onClick={() => removeSample(blockId, t.id)}
-                    className="absolute -right-1.5 -top-1.5 grid h-6 w-6 place-items-center rounded-full bg-[color:var(--color-bad)] text-[11px] font-extrabold leading-none text-white shadow ring-1 ring-white/80 transition-transform hover:scale-110"
+                    className="absolute -right-1.5 -top-1.5 grid h-7 w-7 place-items-center rounded-full bg-[color:var(--color-bad)] text-[12px] font-extrabold leading-none text-white shadow ring-1 ring-white/80 transition-transform hover:scale-110"
                   >
                     ×
                   </button>
@@ -177,9 +177,9 @@ export function ClassBlock({ blockId, handleProps, onRemove }: Props) {
           type="button"
           disabled={locked}
           onClick={addDrawing}
-          className="mt-2 w-full select-none rounded-xl bg-white px-3 py-2 text-center font-display text-[14px] font-bold text-[color:var(--blk-edge)] transition-transform active:scale-[0.98] disabled:opacity-50"
+          className="mt-2 w-full select-none rounded-xl bg-white px-3 py-2 text-center font-display text-[14px] font-bold text-[color:var(--blk-text)] transition-transform active:scale-[0.98] disabled:opacity-50"
         >
-          {locked ? "🔒 building done" : sketchDirty ? "➕ add this drawing" : "✏️ draw on the pad first"}
+          {locked ? "⏸ playing — stop first to add more ➕" : sketchDirty ? "➕ add this drawing" : "✏️ draw on the pad first"}
         </button>
       ) : (
         <button
@@ -189,14 +189,23 @@ export function ClassBlock({ blockId, handleProps, onRemove }: Props) {
           onPointerUp={stopHold}
           onPointerLeave={stopHold}
           onPointerCancel={stopHold}
+          onKeyDown={(e) => {
+            if (e.key === " " || e.key === "Enter") {
+              e.preventDefault(); // stop Space from scrolling the page
+              if (!holding.current) startHold();
+            }
+          }}
+          onKeyUp={(e) => {
+            if (e.key === " " || e.key === "Enter") stopHold();
+          }}
           className={`mt-2 w-full select-none touch-none rounded-xl px-3 py-2 text-center font-display text-[14px] font-bold transition-transform active:scale-[0.98] disabled:opacity-50 ${
             capturing
               ? "bg-[color:var(--color-bad)] text-white"
-              : "bg-white text-[color:var(--blk-edge)]"
+              : "bg-white text-[color:var(--blk-text)]"
           }`}
         >
           {locked
-            ? "🔒 building done"
+            ? "⏸ playing — stop first to add more 📸"
             : !cameraReady
               ? "▶ turn on camera first"
               : capturing

@@ -148,7 +148,8 @@ export default function Landing() {
             </div>
 
             <p className="mt-4 text-[12px] font-bold text-ink-soft">
-              🔒 Everything runs on your device — nothing is uploaded, ever.
+              🔒 Your camera frames and drawings never leave your browser — no ML data is
+              uploaded, ever.
             </p>
           </div>
 
@@ -278,8 +279,8 @@ export default function Landing() {
               Built for Mind the Product&apos;s World Product Day — #EveryoneShipsNow 🚢
             </p>
             <p className="text-[11px] font-bold text-ink-soft/70">
-              All training happens in your browser. We never see your camera, your drawings, or
-              your data.
+              All training happens in your browser. Your camera footage and drawings never leave
+              this page.
             </p>
           </div>
         </footer>

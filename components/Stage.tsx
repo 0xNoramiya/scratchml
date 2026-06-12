@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, RefObject, useMemo } from "react";
+import { ReactNode, RefObject, useMemo, useState } from "react";
 import { useStudio, sourceOf } from "@/lib/store";
 import { Mascot } from "./Mascot";
 import { PredictionBars } from "./PredictionBars";
@@ -17,6 +17,7 @@ interface StageProps {
   onRun: () => void;
   onStop: () => void;
   onRetryBrain: () => void;
+  onBrainNotReady: () => void;
   hint: StageHint | null;
   /** Rendered instead of the camera when the recipe uses the sketchpad. */
   sketchpad: ReactNode;
@@ -29,6 +30,7 @@ export function Stage({
   onRun,
   onStop,
   onRetryBrain,
+  onBrainNotReady,
   hint,
   sketchpad,
 }: StageProps) {
@@ -49,7 +51,7 @@ export function Stage({
   const showGuess = live && topMeta && conf > 0.6;
 
   return (
-    <aside className="order-first flex w-full shrink-0 flex-col gap-3 bg-white/55 px-4 py-4 ring-1 ring-line backdrop-blur-sm nice-scroll max-h-[45dvh] overflow-y-auto lg:order-none lg:max-h-none lg:w-[360px] lg:overflow-y-auto">
+    <aside className="order-first flex w-full shrink-0 flex-col gap-3 bg-white/55 px-4 py-4 ring-1 ring-line backdrop-blur-sm nice-scroll lg:order-none lg:max-h-none lg:w-[360px] lg:overflow-y-auto">
       <Mascot />
 
       {/* Eyes: sketchpad or camera */}
@@ -82,20 +84,24 @@ export function Stage({
                     ? "That's okay! You can teach the model by drawing instead."
                     : "Turn it on so the model can see — or draw instead."}
                 </p>
+                {camera === "denied" && (
+                  <p className="mx-auto mt-2 max-w-[16rem] text-[11px] font-bold leading-snug text-white/60">
+                    Changed your mind? Tap the 🔒 in your browser bar and allow Camera
+                    (on a phone: Settings → Browser → Camera → Allow), then tap below.
+                  </p>
+                )}
                 <div className="mt-3 flex flex-col items-center gap-2">
-                  {camera !== "denied" && (
-                    <button
-                      type="button"
-                      onClick={onToggleCamera}
-                      className="rounded-full bg-white px-4 py-1.5 font-display text-[13px] font-bold text-ink shadow transition-transform hover:scale-105 active:scale-95"
-                    >
-                      ▶ Turn on camera
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={onToggleCamera}
+                    className="rounded-full bg-white px-4 py-1.5 font-display text-[13px] font-bold text-ink shadow transition-transform hover:scale-105 active:scale-95"
+                  >
+                    {camera === "denied" ? "🔄 Try the camera again" : "▶ Turn on camera"}
+                  </button>
                   <button
                     type="button"
                     onClick={onUseSketch}
-                    className="rounded-full bg-skb px-4 py-1.5 font-display text-[13px] font-bold text-white ring-2 ring-skb-edge shadow transition-transform hover:scale-105 active:scale-95"
+                    className="rounded-full bg-skb px-4 py-1.5 font-display text-[13px] font-bold text-[color:var(--color-skb-text)] ring-2 ring-skb-edge shadow transition-transform hover:scale-105 active:scale-95"
                   >
                     ✏️ Use the Sketchpad instead
                   </button>
@@ -134,7 +140,10 @@ export function Stage({
       <div className="mt-auto flex flex-col gap-2 pt-1">
         {hint && (
           <div
-            className={`rounded-xl px-3 py-2 text-center text-[13px] font-extrabold text-white shadow ${
+            role={hint.kind === "err" ? "alert" : "status"}
+            aria-live={hint.kind === "err" ? "assertive" : "polite"}
+            aria-atomic="true"
+            className={`rounded-xl px-3 py-2 text-center text-[13px] font-extrabold text-ink shadow ${
               hint.kind === "ok" ? "bg-good" : "bg-[color:var(--color-bad)]"
             }`}
           >
@@ -143,7 +152,12 @@ export function Stage({
         )}
 
         {phase === "build" && (
-          <GoButton status={modelStatus} onClick={onRun} onRetry={onRetryBrain} />
+          <GoButton
+            status={modelStatus}
+            onClick={onRun}
+            onRetry={onRetryBrain}
+            onNotReady={onBrainNotReady}
+          />
         )}
         {phase === "training" && (
           <button
@@ -159,7 +173,7 @@ export function Stage({
             onClick={onStop}
             className="w-full rounded-2xl bg-card px-4 py-3.5 font-display text-lg font-bold text-ink ring-2 ring-line transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
           >
-            ↺ Teach me more
+            ← Add more examples
           </button>
         )}
       </div>
@@ -205,11 +219,16 @@ function GoButton({
   status,
   onClick,
   onRetry,
+  onNotReady,
 }: {
   status: "idle" | "loading" | "ready" | "error";
   onClick: () => void;
   onRetry: () => void;
+  onNotReady: () => void;
 }) {
+  // Bumped on each disabled-tap to re-trigger the one-shot wiggle animation.
+  const [nudge, setNudge] = useState(0);
+
   if (status === "error") {
     return (
       <button
@@ -224,10 +243,22 @@ function GoButton({
   const ready = status === "ready";
   return (
     <button
+      // Stay enabled while loading so a tap still fires feedback on touch devices
+      // (cursor-wait / opacity say nothing on a phone). When not ready we wiggle
+      // the button and announce a wait message instead of silently doing nothing.
+      key={nudge}
       type="button"
-      onClick={onClick}
-      disabled={!ready}
-      className="w-full rounded-2xl bg-go px-4 py-3.5 font-display text-xl font-bold text-ink ring-2 ring-go-edge shadow-[0_6px_0_0_var(--color-go-edge)] transition-transform hover:-translate-y-0.5 active:translate-y-1 active:shadow-[0_2px_0_0_var(--color-go-edge)] disabled:cursor-wait disabled:opacity-70"
+      aria-disabled={!ready}
+      onClick={() => {
+        if (ready) onClick();
+        else {
+          setNudge((n) => n + 1);
+          onNotReady();
+        }
+      }}
+      className={`w-full rounded-2xl bg-go px-4 py-3.5 font-display text-xl font-bold text-ink ring-2 ring-go-edge shadow-[0_6px_0_0_var(--color-go-edge)] transition-transform hover:-translate-y-0.5 active:translate-y-1 active:shadow-[0_2px_0_0_var(--color-go-edge)] ${
+        ready ? "" : "cursor-wait opacity-70"
+      } ${nudge ? "wiggle" : ""}`}
     >
       {ready ? "🚀 Train & Play!" : "🔌 loading brain…"}
     </button>

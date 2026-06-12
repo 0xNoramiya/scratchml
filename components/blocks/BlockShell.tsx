@@ -57,7 +57,7 @@ export function BlockShell({
           type="button"
           aria-label="Remove block"
           onClick={onRemove}
-          className="absolute -right-2 -top-2 z-[2] grid h-6 w-6 place-items-center rounded-full border-2 border-white bg-[var(--blk-edge)] text-sm font-bold text-white shadow-md transition-transform hover:scale-110 active:scale-95"
+          className="absolute -right-2 -top-2 z-[2] grid h-9 w-9 place-items-center rounded-full border-2 border-white bg-[var(--blk-edge)] text-base font-bold leading-none text-white shadow-md transition-transform hover:scale-110 active:scale-95"
         >
           ×
         </button>
