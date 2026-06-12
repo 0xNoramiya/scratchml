@@ -29,6 +29,10 @@ export type VideoLike = HTMLVideoElement | HTMLCanvasElement;
  */
 async function pickBackend(): Promise<void> {
   try {
+    // Escape hatch: software WebGL runs in the GPU process and keeps the main
+    // thread responsive, which the plain-JS cpu backend does not — useful for
+    // testing/recording on machines without hardware GL.
+    if (localStorage.getItem("sml_force_webgl") === "1") return;
     const canvas = document.createElement("canvas");
     const gl =
       canvas.getContext("webgl2") ?? (canvas.getContext("webgl") as WebGLRenderingContext | null);
