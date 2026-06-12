@@ -26,6 +26,13 @@ export const metadata: Metadata = {
     title: "ScratchML",
     description: "Teach a computer to see, by snapping blocks together.",
     type: "website",
+    images: [{ url: "/art/og.png", width: 1200, height: 630, alt: "A friendly robot stacking colorful ScratchML blocks" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ScratchML — teach a computer to see",
+    description: "Kids build a real ML model by snapping blocks. No code, no accounts, nothing uploaded.",
+    images: ["/art/og.png"],
   },
 };
 

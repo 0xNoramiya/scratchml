@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { sfxEnabled, musicEnabled, setSfxEnabled, setMusicEnabled } from "@/lib/sound";
 
 interface TopBarProps {
   onShowDemos: () => void;
@@ -11,6 +12,24 @@ interface TopBarProps {
 
 export function TopBar({ onShowDemos, onReset, onHelp }: TopBarProps) {
   const [confirming, setConfirming] = useState(false);
+  // read persisted prefs after mount (SSR-safe defaults)
+  const [sfx, setSfx] = useState(true);
+  const [music, setMusic] = useState(false);
+  useEffect(() => {
+    setSfx(sfxEnabled());
+    setMusic(musicEnabled());
+  }, []);
+
+  const toggleSfx = () => {
+    const next = !sfx;
+    setSfx(next);
+    setSfxEnabled(next);
+  };
+  const toggleMusic = () => {
+    const next = !music;
+    setMusic(next);
+    setMusicEnabled(next);
+  };
 
   const handleResetClick = () => setConfirming(true);
 
@@ -62,6 +81,30 @@ export function TopBar({ onShowDemos, onReset, onHelp }: TopBarProps) {
           </>
         ) : (
           <>
+            <button
+              type="button"
+              onClick={toggleSfx}
+              aria-pressed={sfx}
+              aria-label={sfx ? "Turn sound effects off" : "Turn sound effects on"}
+              title={sfx ? "Sounds: on" : "Sounds: off"}
+              className={`grid min-h-[40px] w-10 place-items-center rounded-full text-base ring-2 transition-colors ${
+                sfx ? "bg-paper-2 ring-line" : "bg-card ring-line opacity-55"
+              }`}
+            >
+              {sfx ? "🔊" : "🔇"}
+            </button>
+            <button
+              type="button"
+              onClick={toggleMusic}
+              aria-pressed={music}
+              aria-label={music ? "Turn music off" : "Turn music on"}
+              title={music ? "Music: on" : "Music: off"}
+              className={`grid min-h-[40px] w-10 place-items-center rounded-full text-base ring-2 transition-colors ${
+                music ? "bg-paper-2 ring-line" : "bg-card ring-line opacity-55"
+              }`}
+            >
+              {music ? "🎵" : "🎵"}
+            </button>
             <button
               type="button"
               onClick={onHelp}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -106,7 +107,25 @@ export default function Landing() {
         </nav>
 
         {/* ---------- Hero ---------- */}
-        <header className="mx-auto grid max-w-6xl items-center gap-10 px-5 pb-16 pt-8 md:grid-cols-2 md:pb-24 md:pt-14">
+        <header className="relative mx-auto grid max-w-6xl items-center gap-10 px-5 pb-16 pt-8 md:grid-cols-2 md:pb-24 md:pt-14">
+          {/* crayon-doodle stickers (decorative) */}
+          <Image
+            src="/art/sticker-star.png"
+            alt=""
+            aria-hidden
+            width={86}
+            height={86}
+            className="animate-float pointer-events-none absolute -top-2 right-[4%] hidden rotate-12 select-none md:block"
+          />
+          <Image
+            src="/art/sticker-rainbow.png"
+            alt=""
+            aria-hidden
+            width={96}
+            height={96}
+            className="animate-float pointer-events-none absolute bottom-2 left-[42%] hidden -rotate-6 select-none lg:block"
+            style={{ animationDelay: "-4s" }}
+          />
           <div>
             <p className="pop-in inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-[12px] font-extrabold text-ink-soft ring-1 ring-line">
               <span className="bob inline-block">🤖</span> for kids, classrooms & the curious
@@ -139,12 +158,6 @@ export default function Landing() {
               >
                 🚀 Start building — it&apos;s free
               </Link>
-              <Link
-                href="/studio?demo=sketch"
-                className="rounded-2xl bg-white px-5 py-3.5 font-display text-base font-bold text-skb-edge ring-2 ring-skb transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
-              >
-                ✏️ Try it without a camera
-              </Link>
             </div>
 
             <p className="mt-4 text-[12px] font-bold text-ink-soft">
@@ -170,13 +183,14 @@ export default function Landing() {
                       {
                         "--blk": `var(--color-${b.token})`,
                         "--blk-edge": `var(--color-${b.token}-edge)`,
+                        "--blk-text": `var(--color-${b.token}-text)`,
                         animationDelay: `${200 + i * 90}ms`,
                       } as React.CSSProperties
                     }
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 text-[color:var(--blk-text)]">
                       <span className="text-xl">{b.emoji}</span>
-                      <span className="font-display text-[15px] font-bold text-white">
+                      <span className="font-display text-[15px] font-bold">
                         {b.label}
                       </span>
                     </div>
@@ -200,7 +214,16 @@ export default function Landing() {
         </header>
 
         {/* ---------- How it works ---------- */}
-        <section className="bg-white/55 py-16 ring-1 ring-line backdrop-blur-sm">
+        <section className="relative bg-white/55 py-16 ring-1 ring-line backdrop-blur-sm">
+          <Image
+            src="/art/sticker-bolt.png"
+            alt=""
+            aria-hidden
+            width={72}
+            height={72}
+            className="animate-float pointer-events-none absolute left-[6%] top-6 hidden -rotate-12 select-none md:block"
+            style={{ animationDelay: "-7s" }}
+          />
           <div className="mx-auto max-w-6xl px-5">
             <h2 className="text-center font-display text-3xl font-bold text-ink sm:text-4xl">
               From zero to <span className="text-trn">“it learned!”</span> in 2 minutes

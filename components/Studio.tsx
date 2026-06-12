@@ -26,6 +26,7 @@ import {
   trainHead,
   predict,
 } from "@/lib/mlEngine";
+import { playSfx, resumeMusicIfEnabled } from "@/lib/sound";
 import { CaptureContext, CaptureApi } from "./CaptureContext";
 
 import { TopBar } from "./TopBar";
@@ -107,9 +108,14 @@ export default function Studio({ initialDemo = null }: StudioProps) {
     loadFeatureExtractor()
       .then(() => setModelStatus("ready"))
       .catch(() => setModelStatus("error"));
+    // If the kid left music on last visit, the browser blocks autoplay until
+    // the first interaction — resume it on the first pointerdown.
+    const resume = () => resumeMusicIfEnabled();
+    window.addEventListener("pointerdown", resume, { once: true });
     return () => {
       mountedRef.current = false;
       stopCameraTracks();
+      window.removeEventListener("pointerdown", resume);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -273,6 +279,7 @@ export default function Studio({ initialDemo = null }: StudioProps) {
         if (!stillValid()) return;
         const { sampleId, count } = samples.addEmbedding(classId, emb);
         noteCapture(classId, sampleId, grabThumb(c, false), count);
+        playSfx("pop");
         clearSketch();
         flash("Got it! Now draw it again, a little different ✨", "ok");
         return;
@@ -283,6 +290,7 @@ export default function Studio({ initialDemo = null }: StudioProps) {
       if (!stillValid()) return;
       const { sampleId, count } = samples.addEmbedding(classId, emb);
       noteCapture(classId, sampleId, grabThumb(v, true), count);
+      playSfx("pop"); // throttled internally so hold-to-capture stays gentle
     },
     [clearSketch, flash, grabThumb, noteCapture],
   );
@@ -323,6 +331,7 @@ export default function Studio({ initialDemo = null }: StudioProps) {
     // be detected after the long await — otherwise the resolved trainHead would
     // shove the freshly-blank session into 'live' against an empty script.
     const runId = ++runIdRef.current;
+    playSfx("whoosh");
     setPhase("training");
     setTraining({ epoch: 0, total: s.epochs, acc: 0, loss: 0 });
 
@@ -347,6 +356,7 @@ export default function Studio({ initialDemo = null }: StudioProps) {
     const finalAcc = Math.round(useStudio.getState().training.acc * 100);
     useStudio.setState({ celebrated: false, predictions: [], topClassId: null });
     if (src === "sketchpad") clearSketch();
+    playSfx("fanfare");
     setPhase("live");
     flash(`I studied ${flat.length} pictures — ${finalAcc}% on my practice test! 🎓`, "ok");
   }, [clearSketch, ensureCamera, flash, setPhase, setTraining]);
@@ -404,6 +414,7 @@ export default function Studio({ initialDemo = null }: StudioProps) {
                 setPredictions([...smoothed], topId);
                 if (topP > 0.85 && !useStudio.getState().celebrated) {
                   celebrate();
+                  playSfx("tada");
                   burstConfetti();
                 }
               }
@@ -438,6 +449,7 @@ export default function Studio({ initialDemo = null }: StudioProps) {
     const store = useStudio.getState();
 
     if (data?.fromPalette && data.blockType) {
+      playSfx("snap");
       if (over.id === "canvas") {
         store.addBlock(data.blockType);
       } else {

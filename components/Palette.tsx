@@ -3,6 +3,7 @@
 import { useDraggable } from "@dnd-kit/core";
 import { BlockType, BLOCK_META, PALETTE, SINGLETON, tokenVars } from "@/lib/blocks";
 import { useStudio } from "@/lib/store";
+import { playSfx } from "@/lib/sound";
 
 export function Palette() {
   const phase = useStudio((s) => s.phase);
@@ -55,7 +56,10 @@ function PaletteItem({ type, locked }: { type: BlockType; locked: boolean }) {
       ref={setNodeRef}
       type="button"
       disabled={already}
-      onClick={() => addBlock(type)}
+      onClick={() => {
+        playSfx("snap");
+        addBlock(type);
+      }}
       className={`toy-block toy-block--hover toy-block--press w-auto min-w-[170px] shrink-0 touch-none px-3 py-2.5 text-left lg:w-full lg:min-w-0 ${
         isDragging ? "opacity-40" : ""
       } ${already ? "cursor-not-allowed opacity-45" : "cursor-grab"}`}
