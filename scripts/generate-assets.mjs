@@ -49,13 +49,30 @@ async function elevenMusic(name, prompt, ms) {
     if (res.ok) {
       const raw = path.join(TMP, `${name}.raw.mp3`);
       await writeFile(raw, Buffer.from(await res.arrayBuffer()));
+      // Single-pass mp3->mp3 with loudnorm once produced a corrupt file whose
+      // frames stopped decoding ~1.7s in. Go via a WAV intermediate and add
+      // short fades so the loop edge doesn't click.
+      const dec = path.join(TMP, `${name}.dec.wav`);
+      const norm = path.join(TMP, `${name}.norm.wav`);
+      execFileSync("ffmpeg", ["-y", "-v", "error", "-i", raw, dec], { stdio: "pipe" });
       execFileSync("ffmpeg", [
-        "-y", "-i", raw,
-        "-af", "loudnorm=I=-20:TP=-2",
-        "-ar", "44100", "-b:a", "112k",
+        "-y", "-v", "error", "-i", dec,
+        "-af", `loudnorm=I=-20:TP=-2,afade=t=in:d=0.25,afade=t=out:st=${ms / 1000 - 0.7}:d=0.7`,
+        norm,
+      ], { stdio: "pipe" });
+      execFileSync("ffmpeg", [
+        "-y", "-v", "error", "-i", norm,
+        "-codec:a", "libmp3lame", "-b:a", "112k", "-ar", "44100",
         path.join(SOUNDS, `${name}.mp3`),
       ], { stdio: "pipe" });
-      console.log(`  ✓ music ${name}`);
+      // sanity: refuse to ship a truncated file
+      const probed = execFileSync("ffprobe", [
+        "-v", "error", "-show_entries", "format=duration",
+        "-of", "default=noprint_wrappers=1:nokey=1",
+        path.join(SOUNDS, `${name}.mp3`),
+      ]).toString().trim();
+      if (Number(probed) < (ms / 1000) * 0.9) throw new Error(`${name}: truncated output (${probed}s)`);
+      console.log(`  ✓ music ${name} (${Number(probed).toFixed(1)}s)`);
       return;
     }
     console.log(`  music attempt ${url.split("?")[0]} -> HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
