@@ -1,0 +1,45 @@
+name: Test & Deploy
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: fly-deploy
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: e2e gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Start production server
+        run: |
+          cp -r public .next/standalone/public
+          cp -r .next/static .next/standalone/.next/static
+          (PORT=3000 HOSTNAME=127.0.0.1 node .next/standalone/server.js > server.log 2>&1 &)
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:3000 > /dev/null && break; sleep 1; done
+          curl -sf http://127.0.0.1:3000 > /dev/null || (cat server.log; exit 1)
+      - name: Run e2e suite (includes real model training)
+        run: BASE_URL=http://127.0.0.1:3000 npm run test:e2e
+
+  deploy:
+    name: deploy to Fly.io
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl deploy --remote-only --ha=false
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
